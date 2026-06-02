@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 
 import authRoutes from './routes/authRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
@@ -21,7 +22,13 @@ const allowedOrigins = [
 ];
 
 // Middleware
-app.use(helmet());
+// Disable helmet's contentSecurityPolicy in development so devtools/extensions
+// don't get blocked while developing locally. Enable CSP in production.
+const helmetOptions = {};
+if (process.env.NODE_ENV !== 'production') {
+  helmetOptions.contentSecurityPolicy = false;
+}
+app.use(helmet(helmetOptions));
 app.use(cors({
   origin(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -41,6 +48,21 @@ app.use(rateLimit({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Root route for quick sanity check
+app.get('/', (req, res) => {
+  res.send('Server is running');
+});
+
+// In production, serve the built client app (assumes client build goes to ../client/dist)
+if (process.env.NODE_ENV === 'production') {
+  const __dirname = path.resolve();
+  const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
+  app.use(express.static(clientDistPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  });
+}
+
 export const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ai-finance-tracker');
@@ -55,7 +77,7 @@ export const connectDB = async () => {
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/budget', budgetRoutes);
-app.uske('/api/ai', aiRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
 
