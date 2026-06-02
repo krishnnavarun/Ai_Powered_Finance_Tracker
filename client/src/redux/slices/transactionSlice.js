@@ -1,28 +1,36 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import * as transactionService from '../../services/transactionService'
 
-// helper: extract a readable message from an axios/network error
 const getError = (error) => error.response?.data?.message || error.message || 'Something went wrong'
 
-// thunk: fetchTransactions → calls transactionService.getTransactions(params),
-//                            returns response.data, rejects with getError
 export const fetchTransactions = createAsyncThunk('transactions/fetch', async (params, { rejectWithValue }) => {
-  // try → call transactionService.getTransactions(params), return response.data
-  // catch → return rejectWithValue(getError(error))
+  try {
+    const response = await transactionService.getTransactions(params)
+    return response.data
+  } catch (error) {
+    return rejectWithValue(getError(error))
+  }
 })
 
-// thunk: saveTransaction → if id present → updateTransaction(id, data), else createTransaction(data);
-//                          returns response.data.data, rejects with getError
 export const saveTransaction = createAsyncThunk('transactions/save', async ({ id, data }, { rejectWithValue }) => {
-  // try → call updateTransaction(id, data) when id, else createTransaction(data); return response.data.data
-  // catch → return rejectWithValue(getError(error))
+  try {
+    const response = id
+      ? await transactionService.updateTransaction(id, data)
+      : await transactionService.createTransaction(data)
+
+    return response.data.data
+  } catch (error) {
+    return rejectWithValue(getError(error))
+  }
 })
 
-// thunk: removeTransactionById → calls transactionService.deleteTransaction(id),
-//                                returns the id, rejects with getError
 export const removeTransactionById = createAsyncThunk('transactions/delete', async (id, { rejectWithValue }) => {
-  // try → call transactionService.deleteTransaction(id), return id
-  // catch → return rejectWithValue(getError(error))
+  try {
+    await transactionService.deleteTransaction(id)
+    return id
+  } catch (error) {
+    return rejectWithValue(getError(error))
+  }
 })
 
 const initialState = {
@@ -38,40 +46,66 @@ const transactionSlice = createSlice({
   name: 'transactions',
   initialState,
   reducers: {
-    // setTransactions(state, action) → set state.transactions = action.payload
-    setTransactions: (state, action) => {},
-
-    // setLoading(state, action) → set state.loading = action.payload
-    setLoading: (state, action) => {},
-
-    // setFilters(state, action) → set state.filters = action.payload
-    setFilters: (state, action) => {},
-
-    // setSelectedTransaction(state, action) → set state.selectedTransaction = action.payload
-    setSelectedTransaction: (state, action) => {},
-
-    // addTransaction(state, action) → prepend action.payload to state.transactions
-    addTransaction: (state, action) => {},
-
-    // updateTransaction(state, action) → find by _id and replace with action.payload
-    updateTransaction: (state, action) => {},
-
-    // removeTransaction(state, action) → filter out transaction whose _id matches action.payload
-    removeTransaction: (state, action) => {}
+    setTransactions: (state, action) => {
+      state.transactions = action.payload || []
+    },
+    setLoading: (state, action) => {
+      state.loading = action.payload
+    },
+    setFilters: (state, action) => {
+      state.filters = action.payload || {}
+    },
+    setSelectedTransaction: (state, action) => {
+      state.selectedTransaction = action.payload || null
+    },
+    addTransaction: (state, action) => {
+      state.transactions = [action.payload, ...state.transactions]
+    },
+    updateTransaction: (state, action) => {
+      const index = state.transactions.findIndex((item) => item._id === action.payload?._id)
+      if (index !== -1) {
+        state.transactions[index] = action.payload
+      }
+    },
+    removeTransaction: (state, action) => {
+      state.transactions = state.transactions.filter((item) => item._id !== action.payload)
+    }
   },
   extraReducers: (builder) => {
-    // fetchTransactions:
-    //   pending   → loading = true, clear error
-    //   fulfilled → loading = false, set transactions and pagination from payload
-    //   rejected  → loading = false, error = action.payload
-    //
-    // saveTransaction:
-    //   pending   → loading = true, clear error
-    //   fulfilled → loading = false; if exists by _id → replace, else prepend
-    //   rejected  → loading = false, error = action.payload
-    //
-    // removeTransactionById:
-    //   fulfilled → filter out transaction whose _id matches action.payload
+    builder
+      .addCase(fetchTransactions.pending, (state) => {
+        state.loading = true
+        state.error = ''
+      })
+      .addCase(fetchTransactions.fulfilled, (state, action) => {
+        state.loading = false
+        state.transactions = action.payload.data || []
+        state.pagination = action.payload.pagination || state.pagination
+      })
+      .addCase(fetchTransactions.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Unable to load transactions'
+      })
+      .addCase(saveTransaction.pending, (state) => {
+        state.loading = true
+        state.error = ''
+      })
+      .addCase(saveTransaction.fulfilled, (state, action) => {
+        state.loading = false
+        const index = state.transactions.findIndex((item) => item._id === action.payload?._id)
+        if (index !== -1) {
+          state.transactions[index] = action.payload
+        } else {
+          state.transactions = [action.payload, ...state.transactions]
+        }
+      })
+      .addCase(saveTransaction.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Unable to save transaction'
+      })
+      .addCase(removeTransactionById.fulfilled, (state, action) => {
+        state.transactions = state.transactions.filter((item) => item._id !== action.payload)
+      })
   }
 })
 

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import './App.css'
 
@@ -19,27 +19,60 @@ import Layout from './components/layout/Layout'
 import { useDispatch, useSelector } from 'react-redux'
 import { refreshUser } from './redux/slices/authSlice'
 
-// ProtectedRoute → reads { isAuthenticated } from state.auth;
-//                  renders <Outlet /> when authenticated, else <Navigate to="/login" replace />
 function ProtectedRoute() {
-  // ...
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  return <Outlet />
 }
 
 function App() {
-  // redux: dispatch
+  const dispatch = useDispatch()
+  const [bootstrapping, setBootstrapping] = useState(Boolean(localStorage.getItem('token')))
 
-  // useEffect (on mount) → if token exists in localStorage → dispatch(refreshUser())
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+
+    if (!token) {
+      setBootstrapping(false)
+      return
+    }
+
+    dispatch(refreshUser()).finally(() => setBootstrapping(false))
+  }, [dispatch])
+
+  if (bootstrapping) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(15,23,42,0.95),_rgba(2,6,23,1))] text-white">
+        <div className="rounded-3xl border border-white/10 bg-white/5 px-6 py-4 text-sm uppercase tracking-[0.35em] text-white/70 shadow-2xl backdrop-blur">
+          Loading FinTrack
+        </div>
+      </div>
+    )
+  }
 
   return (
     <Router>
       <Routes>
-        {/* Public routes: /login, /signup */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
 
-        {/* Protected routes (wrapped in <ProtectedRoute /> and <Layout />):
-            /dashboard, /transactions, /budget, /insights, /reports, /profile
-            "/" → redirect to /dashboard */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/transactions" element={<Transactions />} />
+            <Route path="/budget" element={<Budget />} />
+            <Route path="/insights" element={<Insights />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/profile" element={<Profile />} />
+          </Route>
+        </Route>
 
-        {/* Catch-all "*" → redirect to /dashboard */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Router>
   )

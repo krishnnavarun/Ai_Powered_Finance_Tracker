@@ -4,13 +4,13 @@ import transactionReducer from './slices/transactionSlice'
 import budgetReducer from './slices/budgetSlice'
 import insightReducer from './slices/insightSlice'
 
-// configure the redux store with the following reducers:
-//   auth         → authReducer
-//   transactions → transactionReducer
-//   budget       → budgetReducer
-//   insights     → insightReducer
 const store = configureStore({
-  reducer: {}
+  reducer: {
+    auth: authReducer,
+    transactions: transactionReducer,
+    budget: budgetReducer,
+    insights: insightReducer
+  }
 })
 
-export default store
+export default store;
