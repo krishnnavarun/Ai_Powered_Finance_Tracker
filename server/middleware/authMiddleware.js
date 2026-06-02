@@ -1,11 +1,28 @@
 import jwt from 'jsonwebtoken';
 
 export const protect = (req, res, next) => {
-  // extract scheme + token from Authorization header
-  // 401 if scheme !== 'Bearer' or token missing
+  const authHeader = req.headers.authorization || '';
+  const [scheme, token] = authHeader.split(' ');
 
-  // try:
-  //   throw if JWT_SECRET not configured
-  //   jwt.verify(token, JWT_SECRET) → set req.userId = decoded.id → next()
-  // catch → 401: { success: false, message: 'Not authorized to access this route' }
+  if (scheme !== 'Bearer' || !token) {
+    return res.status(401).json({
+      success: false,
+      message: 'Not authorized to access this route'
+    });
+  }
+
+  try {
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not configured');
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.id;
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: 'Not authorized to access this route'
+    });
+  }
 };
