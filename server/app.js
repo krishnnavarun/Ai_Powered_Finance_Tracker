@@ -4,7 +4,6 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import path from 'path';
 
 import authRoutes from './routes/authRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
@@ -17,16 +16,16 @@ dotenv.config();
 
 const app = express();
 
-
-// Middleware
-// Disable helmet's contentSecurityPolicy in development so devtools/extensions
-// don't get blocked while developing locally. Enable CSP in production.
+// Security
 const helmetOptions = {};
+
 if (process.env.NODE_ENV !== 'production') {
   helmetOptions.contentSecurityPolicy = false;
 }
+
 app.use(helmet(helmetOptions));
 
+// CORS
 const parseAllowedOrigins = () => {
   const explicitOrigins = [
     process.env.FRONTEND_URL,
@@ -45,14 +44,20 @@ const allowedOrigins = parseAllowedOrigins();
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow server-to-server and Postman/curl requests.
+    // Allow Postman, curl, server-to-server requests
     if (!origin) return callback(null, true);
 
-    // Keep local development frictionless.
-    if (process.env.NODE_ENV !== 'production') return callback(null, true);
+    // Allow everything in development
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
 
-    const isRenderOrigin = /^https:\/\/[A-Za-z0-9.-]+\.onrender\.com$/i.test(origin);
-    if (allowedOrigins.has(origin) || isRenderOrigin) return callback(null, true);
+    const isRenderOrigin =
+      /^https:\/\/[A-Za-z0-9.-]+\.onrender\.com$/i.test(origin);
+
+    if (allowedOrigins.has(origin) || isRenderOrigin) {
+      return callback(null, true);
+    }
 
     return callback(new Error('Not allowed by CORS'));
   },
@@ -61,23 +66,42 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false
-}));
+
+// Rate Limiting
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    standardHeaders: true,
+    legacyHeaders: false
+  })
+);
+
+// Body Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Root route for quick sanity check
+// Root Route
 app.get('/', (req, res) => {
   res.send('Server is running');
 });
 
+// Health Check
+app.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'Server is running'
+  });
+});
+
+// MongoDB Connection
 export const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ai-finance-tracker');
+    await mongoose.connect(
+      process.env.MONGODB_URI ||
+      'mongodb://localhost:27017/ai-finance-tracker'
+    );
+
     console.log('MongoDB connected');
   } catch (err) {
     console.error('MongoDB connection error:', err.message);
@@ -85,7 +109,7 @@ export const connectDB = async () => {
   }
 };
 
-// Routes
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/budget', budgetRoutes);
@@ -93,25 +117,10 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'Server is running' });
-});
-
-// In production, serve the built client app after API routes so the SPA
-// fallback never intercepts requests like /api/auth/login.
-if (process.env.NODE_ENV === 'production') {
-  const __dirname = path.resolve();
-  const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
-  app.use(express.static(clientDistPath));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(clientDistPath, 'index.html'));
-  });
-}
-
-// Error handling middleware
+// Error Handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
+
   res.status(500).json({
     success: false,
     message: err.message || 'Something went wrong'
