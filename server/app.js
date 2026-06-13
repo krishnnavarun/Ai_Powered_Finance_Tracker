@@ -26,7 +26,41 @@ if (process.env.NODE_ENV !== 'production') {
   helmetOptions.contentSecurityPolicy = false;
 }
 app.use(helmet(helmetOptions));
-app.use(cors());
+
+const parseAllowedOrigins = () => {
+  const explicitOrigins = [
+    process.env.FRONTEND_URL,
+    process.env.CLIENT_URL,
+    process.env.RENDER_EXTERNAL_URL
+  ]
+    .filter(Boolean)
+    .flatMap((value) => value.split(','))
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return new Set(explicitOrigins);
+};
+
+const allowedOrigins = parseAllowedOrigins();
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow server-to-server and Postman/curl requests.
+    if (!origin) return callback(null, true);
+
+    // Keep local development frictionless.
+    if (process.env.NODE_ENV !== 'production') return callback(null, true);
+
+    const isRenderOrigin = /^https:\/\/[A-Za-z0-9.-]+\.onrender\.com$/i.test(origin);
+    if (allowedOrigins.has(origin) || isRenderOrigin) return callback(null, true);
+
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
@@ -40,16 +74,6 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
   res.send('Server is running');
 });
-
-// In production, serve the built client app (assumes client build goes to ../client/dist)
-if (process.env.NODE_ENV === 'production') {
-  const __dirname = path.resolve();
-  const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
-  app.use(express.static(clientDistPath));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(clientDistPath, 'index.html'));
-  });
-}
 
 export const connectDB = async () => {
   try {
@@ -73,6 +97,17 @@ app.use('/api/reports', reportRoutes);
 app.get('/health', (req, res) => {
   res.json({ status: 'Server is running' });
 });
+
+// In production, serve the built client app after API routes so the SPA
+// fallback never intercepts requests like /api/auth/login.
+if (process.env.NODE_ENV === 'production') {
+  const __dirname = path.resolve();
+  const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
+  app.use(express.static(clientDistPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
