@@ -49,11 +49,23 @@ function Login() {
               <p className="mt-2 font-semibold">AI assisted</p>
             </div>
           </div>
+          <div className="lg:hidden pt-2">
+            <button
+              type="button"
+              onClick={() => document.getElementById('auth-form')?.scrollIntoView({ behavior: 'smooth' })}
+              className="inline-flex items-center gap-2 rounded-2xl bg-cyan-400 px-5 py-3.5 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-400/20 transition hover:bg-cyan-300 active:scale-95"
+            >
+              Scroll to Login Form
+              <svg className="h-4 w-4 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 13l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+            </button>
+          </div>
         </div>
       </section>
 
-      <section className="flex items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.2),_transparent_28%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] px-6 py-12 sm:px-10">
-        <div className="w-full max-w-md rounded-[2rem] border border-slate-200 bg-white p-8 shadow-2xl">
+      <section id="auth-form" className="flex items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.2),_transparent_28%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] px-6 py-12 sm:px-10">
+        <div className="w-full max-w-md rounded-[2rem] border border-slate-200 bg-white p-6 sm:p-8 shadow-2xl">
           <div className="mb-8">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Welcome back</p>
             <h2 className="mt-2 text-3xl font-semibold text-slate-900">Login</h2>

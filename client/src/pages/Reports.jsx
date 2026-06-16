@@ -87,7 +87,7 @@ function Reports() {
 
       {report && !loading && (
         <>
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryCard label="Income" value={formatCurrency(report.totalIncome)} tone="green" />
             <SummaryCard label="Expense" value={formatCurrency(report.totalExpense)} tone="red" />
             <SummaryCard label="Savings" value={formatCurrency(report.savings)} tone="blue" />

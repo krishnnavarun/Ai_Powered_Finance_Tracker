@@ -1,7 +1,7 @@
 import { useSelector } from 'react-redux'
 import { useLocation } from 'react-router-dom'
 
-function Navbar() {
+function Navbar({ onToggleSidebar }) {
   const { user } = useSelector((state) => state.auth)
   const location = useLocation()
 
@@ -24,10 +24,22 @@ function Navbar() {
   return (
     <nav className="border-b border-white/60 bg-white/80 backdrop-blur-xl">
       <div className="flex flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6 xl:px-8">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">FinTrack</p>
-          <h1 className="mt-1 text-xl font-semibold text-slate-900 md:text-2xl">{pageTitle}</h1>
-          <p className="mt-1 text-sm text-slate-500">{today}</p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition hover:bg-slate-50 lg:hidden"
+            aria-label="Open sidebar"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">FinTrack</p>
+            <h1 className="mt-1 text-xl font-semibold text-slate-900 md:text-2xl">{pageTitle}</h1>
+            <p className="mt-1 text-sm text-slate-500">{today}</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-3 self-start rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm md:self-auto">

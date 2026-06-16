@@ -130,7 +130,7 @@ function Dashboard() {
 
       {error && <div className="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 shadow-sm">{error}</div>}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((item) => (
           <SummaryCard key={item.label} label={item.label} value={item.value} tone={item.tone} />
         ))}
