@@ -87,7 +87,7 @@ function Reports() {
 
       {report && !loading && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
             <SummaryCard label="Income" value={formatCurrency(report.totalIncome)} tone="green" />
             <SummaryCard label="Expense" value={formatCurrency(report.totalExpense)} tone="red" />
             <SummaryCard label="Savings" value={formatCurrency(report.savings)} tone="blue" />
@@ -98,7 +98,7 @@ function Reports() {
             <section className="rounded-[1.75rem] border border-slate-200 bg-white/90 p-5 shadow-sm xl:col-span-2">
               <h3 className="text-lg font-semibold text-slate-900">Category Analytics</h3>
               <p className="text-sm text-slate-500">The category split for the selected month.</p>
-              <div className="mt-4 h-72">
+              <div className="mt-4 h-64 sm:h-72">
                 {chartData.length ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>

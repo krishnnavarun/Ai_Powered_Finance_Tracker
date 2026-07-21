@@ -34,6 +34,7 @@ function Transactions() {
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
   const [message, setMessage] = useState('')
 
   const query = useMemo(
@@ -122,12 +123,32 @@ function Transactions() {
       </div>
 
       <section className="rounded-[1.5rem] border border-slate-200 bg-white/90 p-4 shadow-sm">
-        <div className="grid gap-3 md:grid-cols-5">
+        {/* Mobile Filter Header Row */}
+        <div className="flex items-center justify-between gap-3 md:hidden">
+          <input
+            value={filters.search}
+            onChange={(event) => updateFilter('search', event.target.value)}
+            placeholder="Search transactions..."
+            className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-sky-400"
+          />
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className={`rounded-2xl border px-4 py-2.5 text-sm font-semibold transition ${
+              showFilters ? 'bg-slate-950 text-white border-slate-950' : 'bg-slate-50 text-slate-700 border-slate-200'
+            }`}
+          >
+            {showFilters ? 'Hide' : 'Filters'}
+          </button>
+        </div>
+
+        {/* Collapsible Filters container */}
+        <div className={`mt-3 md:mt-0 ${showFilters ? 'grid' : 'hidden'} md:grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-5`}>
           <input
             value={filters.search}
             onChange={(event) => updateFilter('search', event.target.value)}
             placeholder="Search title, category, or note"
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
+            className="hidden md:block rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
           />
           <select
             value={filters.type}
@@ -164,7 +185,7 @@ function Transactions() {
           <button
             type="button"
             onClick={() => setFilters({ search: '', type: '', category: '', sort: 'latest', page: 1 })}
-            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 sm:col-span-2 md:col-span-1"
           >
             Reset Filters
           </button>
@@ -178,7 +199,8 @@ function Transactions() {
       )}
 
       <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white/90 shadow-sm">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View (hidden on mobile) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -237,6 +259,53 @@ function Transactions() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards List View (hidden on desktop) */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {loading ? (
+            <div className="px-5 py-10 text-center text-slate-500">
+              Loading transactions...
+            </div>
+          ) : transactions.length ? (
+            transactions.map((item) => (
+              <div key={item._id} className="p-4 space-y-3 bg-white hover:bg-slate-50/50">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-semibold text-slate-900">{item.title}</h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {item.category} · {formatDate(item.transactionDate)}
+                    </p>
+                  </div>
+                  <span className={`text-sm font-bold ${item.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs px-2.5 py-1 bg-slate-100 rounded-full text-slate-600 font-medium">
+                    {prettyText(item.paymentMethod)}
+                  </span>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => openEdit(item)} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+                      Edit
+                    </button>
+                    <button type="button" onClick={() => deleteItem(item)} className="rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-50">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                {item.description && (
+                  <p className="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 italic">
+                    {item.description}
+                  </p>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="px-5 py-10 text-center text-slate-500">
+              No transactions found.
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
           <p>

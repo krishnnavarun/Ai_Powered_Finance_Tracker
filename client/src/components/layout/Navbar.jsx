@@ -23,7 +23,7 @@ function Navbar({ onToggleSidebar }) {
 
   return (
     <nav className="border-b border-white/60 bg-white/80 backdrop-blur-xl">
-      <div className="flex flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6 xl:px-8">
+      <div className="flex items-center justify-between gap-4 px-4 py-3 md:py-4 md:px-6 xl:px-8">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -36,20 +36,26 @@ function Navbar({ onToggleSidebar }) {
             </svg>
           </button>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">FinTrack</p>
-            <h1 className="mt-1 text-xl font-semibold text-slate-900 md:text-2xl">{pageTitle}</h1>
-            <p className="mt-1 text-sm text-slate-500">{today}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-400">FinTrack</p>
+            <h1 className="mt-0.5 text-lg font-semibold text-slate-900 md:text-2xl">{pageTitle}</h1>
+            <p className="mt-0.5 text-xs text-slate-500 hidden sm:block">{today}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 self-start rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm md:self-auto">
+        {/* Desktop Profile Card */}
+        <div className="hidden md:flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-sm font-semibold text-white">
             {user?.name ? user.name.slice(0, 2).toUpperCase() : 'FT'}
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-900">{user?.name || 'Guest user'}</p>
-            <p className="text-xs text-slate-500">{user?.email || 'Manage your finances with confidence'}</p>
+            <p className="text-xs text-slate-500">{user?.email || 'Manage your finances'}</p>
           </div>
+        </div>
+
+        {/* Mobile Profile Avatar */}
+        <div className="md:hidden flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-sm font-semibold text-white shadow-sm">
+          {user?.name ? user.name.slice(0, 2).toUpperCase() : 'FT'}
         </div>
       </div>
     </nav>

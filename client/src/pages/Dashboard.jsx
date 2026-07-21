@@ -83,7 +83,7 @@ function Dashboard() {
 
   return (
     <div className="space-y-6 pb-10">
-      <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-2xl">
+      <section className="hidden md:block overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-2xl">
         <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.3fr_0.7fr] lg:px-8 lg:py-10">
           <div className="space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-200">
@@ -130,7 +130,7 @@ function Dashboard() {
 
       {error && <div className="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 shadow-sm">{error}</div>}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {cards.map((item) => (
           <SummaryCard key={item.label} label={item.label} value={item.value} tone={item.tone} />
         ))}
@@ -144,7 +144,7 @@ function Dashboard() {
               <p className="text-sm text-slate-500">Income versus expense across the months already stored in your database.</p>
             </div>
           </div>
-          <div className="mt-5 h-80">
+          <div className="mt-5 h-64 sm:h-80">
             {incomeExpense.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={incomeExpense}>
@@ -169,7 +169,7 @@ function Dashboard() {
             <h3 className="text-lg font-semibold text-slate-900">Category Distribution</h3>
             <p className="text-sm text-slate-500">A quick scan of where the money is going.</p>
           </div>
-          <div className="mt-5 h-80">
+          <div className="mt-5 h-64 sm:h-80">
             {categories.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -194,7 +194,7 @@ function Dashboard() {
         <section className="rounded-[1.75rem] border border-slate-200 bg-white/90 p-5 shadow-sm xl:col-span-2">
           <h3 className="text-lg font-semibold text-slate-900">Income vs Expense</h3>
           <p className="text-sm text-slate-500">Compare inflows and outflows per month.</p>
-          <div className="mt-5 h-80">
+          <div className="mt-5 h-64 sm:h-80">
             {incomeExpense.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={incomeExpense}>

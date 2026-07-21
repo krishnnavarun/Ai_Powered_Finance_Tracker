@@ -108,16 +108,18 @@ function Budget() {
 
                 return (
                   <div key={`${item.category}-${index}`} className="rounded-3xl border border-slate-200 p-4">
-                    <div className="grid gap-3 md:grid-cols-[1.4fr_0.8fr_auto]">
-                      <select value={item.category} onChange={(event) => updateCategory(index, 'category', event.target.value)} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
-                        {categories.map((category) => (
-                          <option key={category} value={category}>
-                            {category}
-                          </option>
-                        ))}
-                      </select>
-                      <input type="number" min="0" value={item.limit} onChange={(event) => updateCategory(index, 'limit', event.target.value)} className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-100" />
-                      <button type="button" onClick={() => removeCategory(index)} className="rounded-2xl border border-rose-200 px-4 py-3 text-sm font-semibold text-rose-700">
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1.4fr_0.8fr_auto]">
+                      <div className="grid gap-2 grid-cols-2 sm:contents">
+                        <select value={item.category} onChange={(event) => updateCategory(index, 'category', event.target.value)} className="rounded-2xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                          {categories.map((category) => (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          ))}
+                        </select>
+                        <input type="number" min="0" value={item.limit} onChange={(event) => updateCategory(index, 'limit', event.target.value)} placeholder="Limit" className="rounded-2xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-100" />
+                      </div>
+                      <button type="button" onClick={() => removeCategory(index)} className="w-full rounded-2xl border border-rose-200 bg-rose-50/50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-50 transition sm:w-auto">
                         Remove
                       </button>
                     </div>
