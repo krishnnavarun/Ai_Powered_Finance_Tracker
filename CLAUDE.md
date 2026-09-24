@@ -64,7 +64,7 @@
 | Email | Resend (or Nodemailer + SMTP) |
 | PDF export | pdfkit (server) |
 | CSV | papaparse (client) / csv-parse (server) |
-| Security | helmet, cors, express-rate-limit (Redis store), express-mongo-sanitize, zod validation |
+| Security | helmet, cors, express-rate-limit (Redis store), own `sanitize` middleware (express-mongo-sanitize does not support Express 5), zod validation |
 | Logging | pino + pino-http |
 | Testing | Vitest (unit), Supertest (API), Playwright (E2E), mongodb-memory-server |
 | Docs | Swagger / OpenAPI (swagger-ui-express) |
@@ -101,7 +101,6 @@ React (Vite) ──HTTPS/JSON + SSE──> Express API ──> MongoDB Atlas
 paisa-pal/                    (root holds only docs — no package.json, node_modules or .gitignore)
 ├── CLAUDE.md
 ├── README.md
-├── docker-compose.yml            (optional: mongo + redis for local dev)
 ├── .github/workflows/ci.yml
 ├── client/
 │   ├── index.html
@@ -123,12 +122,13 @@ paisa-pal/                    (root holds only docs — no package.json, node_mo
 │       ├── lib/            (money.js, dates.js, zod schemas, constants)
 │       └── styles/
 └── server/
+    ├── docker-compose.yml  (optional: local mongo replica set + redis)
     ├── src/
     │   ├── app.js  server.js  worker.js
     │   ├── config/         (env.js validated with zod, db.js, redis.js, logger.js)
     │   ├── models/
     │   ├── routes/  controllers/  services/
-    │   ├── middleware/     (auth, validate, rateLimit, errorHandler, notFound)
+    │   ├── middleware/     (auth, validate, rateLimit, errorHandler, notFound, sanitize)
     │   ├── ai/
     │   │   ├── llm/        (adapter.js, gemini.js, openai.js, groq.js, ollama.js)
     │   │   ├── prompts/
@@ -140,7 +140,7 @@ paisa-pal/                    (root holds only docs — no package.json, node_mo
     │   │   ├── piiMasker.js
     │   │   └── chatAgent.js
     │   ├── jobs/           (queues.js, recurring.job.js, insights.job.js, digest.job.js, alerts.job.js)
-    │   ├── utils/          (money.js, dates.js, ApiError.js, asyncHandler.js)
+    │   ├── utils/          (money.js, dates.js, ApiError.js)  — no asyncHandler: Express 5 forwards async errors itself
     │   ├── seed/           (defaultCategories.js, demoUser.js — 6 months realistic data)
     │   └── docs/           (openapi)
     └── tests/              (unit/, api/, fixtures/ incl. sample SMS + CSV)
@@ -352,7 +352,7 @@ Standard error shape: `{ success: false, error: { code, message, details? } }`.
 ## 10. Security checklist
 - [ ] bcrypt (12 rounds); password rules; login rate limit (5/min/IP)
 - [ ] Refresh token rotation + reuse detection; httpOnly, secure, sameSite cookies
-- [ ] helmet, strict CORS (client origin only), mongo-sanitize, Zod on every body/query/param
+- [ ] helmet, strict CORS (client origin only), sanitize middleware, Zod on every body/query/param
 - [ ] Every query filtered by `userId`; tests prove user A cannot read user B's data
 - [ ] File upload: type + size limits (5 MB images, 10 MB CSV)
 - [ ] PII masking before LLM; AI toggle; no raw financial data in logs
@@ -394,8 +394,8 @@ VITE_API_URL=http://localhost:5000/api
 
 ### Phase 0 — Setup
 - [x] Monorepo `client/` + `server/`, JavaScript (ESM), ESLint, Prettier, `.gitignore`, `.env.example`
-- [ ] Express app with helmet, cors, pino, error handler, `/api/health`, env validation with Zod
-- [ ] Mongo + Redis connections; docker-compose for local mongo/redis (optional)
+- [x] Express app with helmet, cors, pino, error handler, `/api/health`, env validation with Zod
+- [x] Mongo + Redis connections; docker-compose for local mongo/redis (optional)
 - [ ] Vite React app with Tailwind + shadcn/ui, router, layout shell (sidebar + mobile nav), theme toggle
 - [ ] GitHub Actions CI (lint, format check, test)
 
@@ -456,7 +456,7 @@ Each checkpoint is a small, working, pushable state. Claude stops after each one
 
 **Phase 0 — Setup**
 - [x] **CP1 Repo skeleton** — independent `client/` + `server/` apps, each with its own `package.json`, JavaScript (ESM), ESLint, Prettier, `.gitignore`, `.env.example`; README stub
-- [ ] **CP2 Server foundation** — Express + helmet + cors + pino, error handler, notFound, `/api/health`, Zod env validation, Mongo + Redis connections, docker-compose, Vitest + Supertest health test
+- [x] **CP2 Server foundation** — Express + helmet + cors + pino, error handler, notFound, `/api/health`, Zod env validation, Mongo + Redis connections, docker-compose, Vitest + Supertest health test
 - [ ] **CP3 Client foundation** — Vite + React (JSX), Tailwind + shadcn/ui, React Router, layout shell (sidebar + mobile nav), theme toggle
 - [ ] **CP4 CI** — GitHub Actions: lint, format check, test for client + server
 

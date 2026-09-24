@@ -26,19 +26,36 @@ paisa-pal/
 
 ## Getting started
 
-Requires Node.js 22+.
+Requires Node.js 22.9+.
+
+### 1. API (`server/`)
 
 ```bash
-# API
 cd server
 npm install
 cp .env.example .env
+```
 
-# Web app (in a second terminal)
+Set `MONGODB_URI` in `server/.env` — either:
+
+- **MongoDB Atlas (free, no install):** create an M0 cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas), then paste its `mongodb+srv://...` connection string, or
+- **Docker:** run `npm run db:up` (local MongoDB replica set + Redis) and keep the default URI.
+
+`REDIS_URL` is optional — leave it empty to run without Redis, or use a free [Upstash](https://upstash.com) `rediss://...` URL.
+
+```bash
+npm run dev        # http://localhost:5000/api/health
+```
+
+### 2. Web app (`client/`)
+
+```bash
 cd client
 npm install
 cp .env.example .env
 ```
+
+### Scripts
 
 Run these inside `server/` or `client/`:
 
