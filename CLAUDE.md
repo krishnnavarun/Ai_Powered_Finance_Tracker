@@ -10,12 +10,13 @@
 - Build the project **phase by phase** (Section 12). Do not jump ahead.
 - At the end of each checkpoint (Section 12.1): run lint + tests, fix failures, tick the checkboxes in this file, then **STOP**. Do not commit or push — the user pushes to GitHub at each checkpoint and says "continue" to start the next one. Suggested commit message: `feat(cpN): <summary>`.
 - Ask before: adding a paid service, changing the stack, deleting data, or changing the database schema after Phase 3.
-- Use **TypeScript** on both client and server.
+- Use **JavaScript** (ES modules, `"type": "module"`) on both client and server — no TypeScript. Document function inputs/outputs with JSDoc; validate all runtime data with Zod.
 - Never hardcode secrets. Everything goes through `.env` (keep `.env.example` updated).
 - Money is always stored as **integers in paise** (₹250.50 → `25050`). Format only in the UI.
 - Every DB query must be scoped by the logged-in `userId`. No exceptions.
 - The LLM must **never** access MongoDB directly. It only calls whitelisted tool functions (Section 7.4).
 - All AI features must degrade gracefully: if the AI API fails or AI is disabled, the app still works.
+- `client/` and `server/` are **fully independent**: each has its own `package.json`, `node_modules`, lock file, ESLint/Prettier configs, `.gitignore` and `.env.example`. Never add tooling or dependencies at the repo root. Run `npm run check` inside each folder.
 - Prefer small, readable files. Business logic lives in `services/`, not controllers.
 - Write unit tests for every analytics function and parser.
 
@@ -45,7 +46,7 @@
 
 | Layer | Tool |
 |---|---|
-| Frontend | React + Vite + TypeScript |
+| Frontend | React + Vite (JavaScript / JSX) |
 | Styling / UI | Tailwind CSS + shadcn/ui + lucide-react icons |
 | Server state | TanStack Query |
 | Client state | Zustand |
@@ -53,7 +54,7 @@
 | Charts | Recharts |
 | Routing | React Router |
 | Animations | Framer Motion (light use) |
-| Backend | Node.js + Express + TypeScript |
+| Backend | Node.js + Express (JavaScript, ES modules) |
 | Database | MongoDB Atlas + Mongoose |
 | Cache / rate limit / queues | Redis (Upstash) + BullMQ |
 | Auth | JWT (access 15 min) + refresh token (7 days, httpOnly cookie, rotated, hashed in DB), bcrypt; Google OAuth optional |
@@ -67,7 +68,7 @@
 | Logging | pino + pino-http |
 | Testing | Vitest (unit), Supertest (API), Playwright (E2E), mongodb-memory-server |
 | Docs | Swagger / OpenAPI (swagger-ui-express) |
-| CI | GitHub Actions (lint, typecheck, test) |
+| CI | GitHub Actions (lint, format check, test) |
 | Deploy | Vercel (client), Render or Railway (server + worker), MongoDB Atlas, Upstash |
 | Optional | Docker + docker-compose for local dev, Sentry for errors, PWA (vite-plugin-pwa) |
 
@@ -85,7 +86,7 @@ React (Vite) ──HTTPS/JSON + SSE──> Express API ──> MongoDB Atlas
                                       │    ├── parsers/ (nl text, sms regex, receipt, csv)
                                       │    ├── categorizer (rules → merchant memory → LLM)
                                       │    ├── chat agent (tool calling, whitelisted tools)
-                                      │    └── analytics/ (forecast, anomaly, subscriptions, healthScore, budgetSuggest, whatIf) — pure TS math
+                                      │    └── analytics/ (forecast, anomaly, subscriptions, healthScore, budgetSuggest, whatIf) — pure JS math
                                       ├── Redis: cache, rate limits, BullMQ
                                       └── worker process: recurring txns, nightly insights, weekly digest, budget alerts
 ```
@@ -97,16 +98,16 @@ React (Vite) ──HTTPS/JSON + SSE──> Express API ──> MongoDB Atlas
 ## 4. Folder structure
 
 ```
-paisa-pal/
+paisa-pal/                    (root holds only docs — no package.json, node_modules or .gitignore)
 ├── CLAUDE.md
 ├── README.md
 ├── docker-compose.yml            (optional: mongo + redis for local dev)
 ├── .github/workflows/ci.yml
 ├── client/
 │   ├── index.html
-│   ├── vite.config.ts
+│   ├── vite.config.js
 │   └── src/
-│       ├── main.tsx  App.tsx  router.tsx
+│       ├── main.jsx  App.jsx  router.jsx
 │       ├── api/            (axios instance with refresh interceptor, query hooks per feature)
 │       ├── components/
 │       │   ├── ui/         (shadcn)
@@ -119,28 +120,28 @@ paisa-pal/
 │       ├── pages/          (Landing, Login, Register, Dashboard, Transactions, Wallets,
 │       │                    Budgets, Goals, Reports, Subscriptions, Assistant, Insights, Settings)
 │       ├── store/          (zustand: ui, filters)
-│       ├── lib/            (money.ts, dates.ts, zod schemas, constants)
+│       ├── lib/            (money.js, dates.js, zod schemas, constants)
 │       └── styles/
 └── server/
     ├── src/
-    │   ├── app.ts  server.ts  worker.ts
-    │   ├── config/         (env.ts validated with zod, db.ts, redis.ts, logger.ts)
+    │   ├── app.js  server.js  worker.js
+    │   ├── config/         (env.js validated with zod, db.js, redis.js, logger.js)
     │   ├── models/
     │   ├── routes/  controllers/  services/
     │   ├── middleware/     (auth, validate, rateLimit, errorHandler, notFound)
     │   ├── ai/
-    │   │   ├── llm/        (adapter.ts, gemini.ts, openai.ts, groq.ts, ollama.ts)
+    │   │   ├── llm/        (adapter.js, gemini.js, openai.js, groq.js, ollama.js)
     │   │   ├── prompts/
-    │   │   ├── parsers/    (nlParser.ts, smsParser.ts, receiptParser.ts, csvImporter.ts)
+    │   │   ├── parsers/    (nlParser.js, smsParser.js, receiptParser.js, csvImporter.js)
     │   │   ├── tools/      (chat tool definitions + implementations)
-    │   │   ├── analytics/  (forecast.ts, anomaly.ts, subscriptions.ts, healthScore.ts,
-    │   │   │                budgetSuggest.ts, whatIf.ts)
-    │   │   ├── categorizer.ts
-    │   │   ├── piiMasker.ts
-    │   │   └── chatAgent.ts
-    │   ├── jobs/           (queues.ts, recurring.job.ts, insights.job.ts, digest.job.ts, alerts.job.ts)
-    │   ├── utils/          (money.ts, dates.ts, ApiError.ts, asyncHandler.ts)
-    │   ├── seed/           (defaultCategories.ts, demoUser.ts — 6 months realistic data)
+    │   │   ├── analytics/  (forecast.js, anomaly.js, subscriptions.js, healthScore.js,
+    │   │   │                budgetSuggest.js, whatIf.js)
+    │   │   ├── categorizer.js
+    │   │   ├── piiMasker.js
+    │   │   └── chatAgent.js
+    │   ├── jobs/           (queues.js, recurring.job.js, insights.job.js, digest.job.js, alerts.job.js)
+    │   ├── utils/          (money.js, dates.js, ApiError.js, asyncHandler.js)
+    │   ├── seed/           (defaultCategories.js, demoUser.js — 6 months realistic data)
     │   └── docs/           (openapi)
     └── tests/              (unit/, api/, fixtures/ incl. sample SMS + CSV)
 ```
@@ -237,11 +238,14 @@ Indexes: `{userId, date:-1}`, `{userId, categoryId, date}`, `{userId, merchantKe
 ## 7. AI design (implementation details)
 
 ### 7.1 LLM adapter
-```ts
-interface LLMProvider {
-  generateJSON<T>(opts: { system: string; user: string; schema: ZodSchema<T>; image?: Buffer }): Promise<T>;
-  chatWithTools(opts: { system: string; messages: Msg[]; tools: ToolDef[] }): AsyncIterable<ChatEvent>;
-}
+Every provider (gemini.js, openai.js, …) exports an object with the same two methods:
+```js
+/**
+ * @typedef {Object} LLMProvider
+ * @property {(opts: { system: string, user: string, schema: import('zod').ZodType, image?: Buffer }) => Promise<any>} generateJSON
+ *   Returns data already validated by `schema`.
+ * @property {(opts: { system: string, messages: Msg[], tools: ToolDef[] }) => AsyncIterable<ChatEvent>} chatWithTools
+ */
 ```
 - Provider chosen by `LLM_PROVIDER` env. Models configured by env (`LLM_MODEL_FAST`, `LLM_MODEL_SMART`).
 - `generateJSON`: request JSON output, validate with Zod, retry once with the validation error, else throw `AIParseError`.
@@ -286,12 +290,12 @@ Whitelisted tools (all implementations inject `userId` server-side; the LLM neve
 Loop: user msg → LLM → tool calls (max 5 per turn) → results → final answer streamed via SSE. If a tool result is chartable, return `chart: {type, data}` so the UI renders Recharts inline. Save history. Suggested prompts: "Where did most of my money go this month?", "Compare food spending with last month", "Can I afford a ₹15,000 phone this month?", "How can I save ₹3,000 more?".
 
 ### 7.6 Analytics engine (pure functions, no LLM)
-- **forecast.ts**: EMA of daily expense (α = 0.3) over current month; `predictedEnd = balance − emaDaily × daysLeft − upcomingRecurring + expectedIncome`. Also project each budget's month-end usage. Output series for chart.
-- **anomaly.ts**: per category, weekly totals over last 8 weeks → mean, std; `z = (thisWeek − mean)/std`; flag z > 2 and amount > ₹500. Duplicate: same merchantKey + amount within 24h.
-- **subscriptions.ts**: group by merchantKey; ≥3 charges; amount variance ≤ 10%; interval ≈ 7/30/365 days (±3 days / ±5 days / ±15 days) → subscription with nextExpectedAt and yearlyCost.
-- **healthScore.ts** (0–100): savings rate 35, budget adherence 25, spending stability (coefficient of variation) 15, goal on-track 15, emergency buffer (savings ÷ avg monthly expense, target 3 months) 10. Return sub-scores + one tip each.
-- **budgetSuggest.ts**: median of last 3 months per category, trimmed toward a target savings rate (default 20%); needs vs wants split.
-- **whatIf.ts**: apply % changes to average monthly category spend → new monthly savings → new goal completion dates.
+- **forecast.js**: EMA of daily expense (α = 0.3) over current month; `predictedEnd = balance − emaDaily × daysLeft − upcomingRecurring + expectedIncome`. Also project each budget's month-end usage. Output series for chart.
+- **anomaly.js**: per category, weekly totals over last 8 weeks → mean, std; `z = (thisWeek − mean)/std`; flag z > 2 and amount > ₹500. Duplicate: same merchantKey + amount within 24h.
+- **subscriptions.js**: group by merchantKey; ≥3 charges; amount variance ≤ 10%; interval ≈ 7/30/365 days (±3 days / ±5 days / ±15 days) → subscription with nextExpectedAt and yearlyCost.
+- **healthScore.js** (0–100): savings rate 35, budget adherence 25, spending stability (coefficient of variation) 15, goal on-track 15, emergency buffer (savings ÷ avg monthly expense, target 3 months) 10. Return sub-scores + one tip each.
+- **budgetSuggest.js**: median of last 3 months per category, trimmed toward a target savings rate (default 20%); needs vs wants split.
+- **whatIf.js**: apply % changes to average monthly category spend → new monthly savings → new goal completion dates.
 
 LLM is only used to phrase insight messages (with template fallback when AI is off).
 
@@ -354,7 +358,7 @@ Standard error shape: `{ success: false, error: { code, message, details? } }`.
 
 ---
 
-## 11. Environment variables (`.env.example`)
+## 11. Environment variables (`server/.env.example` + `client/.env.example`)
 ```
 # server
 NODE_ENV=development
@@ -387,11 +391,11 @@ VITE_API_URL=http://localhost:5000/api
 ## 12. Build phases (tick as completed)
 
 ### Phase 0 — Setup
-- [ ] Monorepo `client/` + `server/`, TypeScript, ESLint, Prettier, `.gitignore`, `.env.example`
+- [x] Monorepo `client/` + `server/`, JavaScript (ESM), ESLint, Prettier, `.gitignore`, `.env.example`
 - [ ] Express app with helmet, cors, pino, error handler, `/api/health`, env validation with Zod
 - [ ] Mongo + Redis connections; docker-compose for local mongo/redis (optional)
 - [ ] Vite React app with Tailwind + shadcn/ui, router, layout shell (sidebar + mobile nav), theme toggle
-- [ ] GitHub Actions CI (lint, typecheck, test)
+- [ ] GitHub Actions CI (lint, format check, test)
 
 ### Phase 1 — Auth
 - [ ] User + RefreshToken models, register/login/refresh/logout/me
@@ -449,10 +453,10 @@ VITE_API_URL=http://localhost:5000/api
 Each checkpoint is a small, working, pushable state. Claude stops after each one.
 
 **Phase 0 — Setup**
-- [ ] **CP1 Repo skeleton** — `client/` + `server/` folders, root `package.json` (npm workspaces), TypeScript configs, ESLint, Prettier, `.gitignore`, `.env.example`, README stub
+- [x] **CP1 Repo skeleton** — independent `client/` + `server/` apps, each with its own `package.json`, JavaScript (ESM), ESLint, Prettier, `.gitignore`, `.env.example`; README stub
 - [ ] **CP2 Server foundation** — Express + helmet + cors + pino, error handler, notFound, `/api/health`, Zod env validation, Mongo + Redis connections, docker-compose, Vitest + Supertest health test
-- [ ] **CP3 Client foundation** — Vite React TS, Tailwind + shadcn/ui, React Router, layout shell (sidebar + mobile nav), theme toggle
-- [ ] **CP4 CI** — GitHub Actions: lint, typecheck, test for client + server
+- [ ] **CP3 Client foundation** — Vite + React (JSX), Tailwind + shadcn/ui, React Router, layout shell (sidebar + mobile nav), theme toggle
+- [ ] **CP4 CI** — GitHub Actions: lint, format check, test for client + server
 
 **Phase 1 — Auth**
 - [ ] **CP5 Auth backend** — User + RefreshToken models, register/login/refresh/logout/me, auth middleware, login rate limit, API tests
