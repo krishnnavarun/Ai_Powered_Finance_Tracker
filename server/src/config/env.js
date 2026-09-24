@@ -20,7 +20,24 @@ const envSchema = z.object({
     .optional(),
 
   LOG_LEVEL: z.enum(LOG_LEVELS).optional(),
+
+  // Auth. Secrets must be long random strings and different from each other.
+  JWT_ACCESS_SECRET: z
+    .string({ error: 'JWT_ACCESS_SECRET is required' })
+    .min(32, 'must be at least 32 characters'),
+  JWT_REFRESH_SECRET: z
+    .string({ error: 'JWT_REFRESH_SECRET is required' })
+    .min(32, 'must be at least 32 characters'),
+  ACCESS_TOKEN_TTL_MINUTES: z.coerce.number().int().min(1).max(60).default(15),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(7),
+  // bcrypt cost factor. 12 in real use; tests lower it to stay fast.
+  BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
 });
+
+const envSchemaWithChecks = envSchema.refine(
+  (env) => env.JWT_ACCESS_SECRET !== env.JWT_REFRESH_SECRET,
+  { path: ['JWT_REFRESH_SECRET'], message: 'must be different from JWT_ACCESS_SECRET' },
+);
 
 // Treat `KEY=` (empty value in .env) the same as not setting the key at all.
 function dropEmptyValues(source) {
@@ -29,7 +46,7 @@ function dropEmptyValues(source) {
 
 // Validates the given variables and returns a frozen config object. Throws with a readable list of problems.
 export function loadEnv(source = process.env) {
-  const result = envSchema.safeParse(dropEmptyValues(source));
+  const result = envSchemaWithChecks.safeParse(dropEmptyValues(source));
   if (!result.success) {
     const problems = result.error.issues
       .map((issue) => `  - ${issue.path.join('.') || '(root)'}: ${issue.message}`)

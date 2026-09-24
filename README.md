@@ -44,6 +44,12 @@ Set `MONGODB_URI` in `server/.env` — either:
 - **MongoDB Atlas (free, no install):** create an M0 cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas), then paste its `mongodb+srv://...` connection string, or
 - **Docker:** run `npm run db:up` (local MongoDB replica set + Redis) and keep the default URI.
 
+Set `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` to two **different** random strings. Generate each with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
 `REDIS_URL` is optional — leave it empty to run without Redis, or use a free [Upstash](https://upstash.com) `rediss://...` URL.
 
 ```bash

@@ -1,16 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { loadEnv } from '../../src/config/env.js';
 
-const minimal = { MONGODB_URI: 'mongodb://localhost:27017/paisa-pal' };
+const minimal = {
+  MONGODB_URI: 'mongodb://localhost:27017/paisa-pal',
+  JWT_ACCESS_SECRET: 'a'.repeat(32),
+  JWT_REFRESH_SECRET: 'b'.repeat(32),
+};
 
 describe('loadEnv', () => {
-  it('applies defaults when only MONGODB_URI is set', () => {
+  it('applies defaults when only the required values are set', () => {
     const env = loadEnv(minimal);
     expect(env).toMatchObject({
       NODE_ENV: 'development',
       PORT: 5000,
       CLIENT_URL: 'http://localhost:5173',
       MONGODB_URI: minimal.MONGODB_URI,
+      ACCESS_TOKEN_TTL_MINUTES: 15,
+      REFRESH_TOKEN_TTL_DAYS: 7,
+      BCRYPT_ROUNDS: 12,
     });
     expect(env.REDIS_URL).toBeUndefined();
   });
@@ -21,6 +28,7 @@ describe('loadEnv', () => {
 
   it('accepts Atlas (mongodb+srv) and Upstash (rediss) URLs', () => {
     const env = loadEnv({
+      ...minimal,
       MONGODB_URI: 'mongodb+srv://user:pass@cluster0.example.mongodb.net/paisa-pal',
       REDIS_URL: 'rediss://default:token@example.upstash.io:6379',
     });
@@ -50,6 +58,28 @@ describe('loadEnv', () => {
     [{ ...minimal, LOG_LEVEL: 'loud' }, /LOG_LEVEL/],
   ])('rejects invalid config %j', (source, message) => {
     expect(() => loadEnv(source)).toThrow(message);
+  });
+
+  it('requires both JWT secrets', () => {
+    expect(() => loadEnv({ MONGODB_URI: minimal.MONGODB_URI })).toThrow(
+      /JWT_ACCESS_SECRET is required[\s\S]*JWT_REFRESH_SECRET is required/,
+    );
+  });
+
+  it('rejects short JWT secrets', () => {
+    expect(() => loadEnv({ ...minimal, JWT_ACCESS_SECRET: 'short' })).toThrow(
+      /JWT_ACCESS_SECRET: must be at least 32 characters/,
+    );
+  });
+
+  it('rejects identical access and refresh secrets', () => {
+    expect(() => loadEnv({ ...minimal, JWT_REFRESH_SECRET: minimal.JWT_ACCESS_SECRET })).toThrow(
+      /JWT_REFRESH_SECRET: must be different from JWT_ACCESS_SECRET/,
+    );
+  });
+
+  it('rejects a bcrypt cost outside 4-15', () => {
+    expect(() => loadEnv({ ...minimal, BCRYPT_ROUNDS: '20' })).toThrow(/BCRYPT_ROUNDS/);
   });
 
   it('lists every problem at once', () => {

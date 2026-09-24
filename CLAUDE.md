@@ -20,6 +20,7 @@
 - **Adding shadcn/ui components:** `npx shadcn add` fails on this machine (npm `allow-scripts` config + registry `cn` import). Instead run `npx shadcn@latest view <name>`, take the source, convert it to `.jsx` (drop types, import `cn` from `@/lib/utils`, `radix-ui` for primitives) and save it in `client/src/components/ui/`. Never install a package named `cn`.
 - Client pages are registered in `client/src/lib/navigation.js` (sidebar, mobile nav and router all read it). Replace `PlaceholderPage` in `client/src/router.jsx` as each page is built.
 - Edit files with the Edit/Write tools or Node — never PowerShell `Set-Content`/`Get-Content -Raw` round-trips (Windows PowerShell 5.1 corrupts UTF-8 like ₹ and — and adds a BOM).
+- API responses: success → `{ success: true, data: {...} }`; errors → the standard error shape (Section 8). Protected routes use `requireAuth` and read the user from `req.user.id`. Validate input with `validate({ body, query, params })` + Zod schemas in `server/src/validators/`.
 - Prefer small, readable files. Business logic lives in `services/`, not controllers.
 - Write unit tests for every analytics function and parser.
 
@@ -60,14 +61,14 @@
 | Backend | Node.js + Express (JavaScript, ES modules) |
 | Database | MongoDB Atlas + Mongoose |
 | Cache / rate limit / queues | Redis (Upstash) + BullMQ |
-| Auth | JWT (access 15 min) + refresh token (7 days, httpOnly cookie, rotated, hashed in DB), bcrypt; Google OAuth optional |
+| Auth | JWT (access 15 min) + refresh token (7 days, httpOnly cookie, rotated, hashed in DB), bcrypt via `bcryptjs` (pure JS, same hashes — no native build); Google OAuth optional |
 | AI (LLM) | Gemini API (default, free tier) via provider adapter; OpenAI / Groq / Ollama (local) as alternatives |
 | OCR | LLM vision for receipts; Tesseract.js fallback |
 | File storage | Cloudinary |
 | Email | Resend (or Nodemailer + SMTP) |
 | PDF export | pdfkit (server) |
 | CSV | papaparse (client) / csv-parse (server) |
-| Security | helmet, cors, express-rate-limit (Redis store), own `sanitize` middleware (express-mongo-sanitize does not support Express 5), zod validation |
+| Security | helmet, cors, express-rate-limit (in-memory now; Redis store with a non-queuing connection in CP19), own `sanitize` middleware (express-mongo-sanitize does not support Express 5), zod validation |
 | Logging | pino + pino-http |
 | Testing | Vitest (unit), Supertest (API), Playwright (E2E), mongodb-memory-server |
 | Docs | Swagger / OpenAPI (swagger-ui-express) |
@@ -353,8 +354,8 @@ Standard error shape: `{ success: false, error: { code, message, details? } }`.
 ---
 
 ## 10. Security checklist
-- [ ] bcrypt (12 rounds); password rules; login rate limit (5/min/IP)
-- [ ] Refresh token rotation + reuse detection; httpOnly, secure, sameSite cookies
+- [x] bcrypt (12 rounds); password rules; login rate limit (5/min/IP)
+- [x] Refresh token rotation + reuse detection; httpOnly, secure, sameSite cookies
 - [ ] helmet, strict CORS (client origin only), sanitize middleware, Zod on every body/query/param
 - [ ] Every query filtered by `userId`; tests prove user A cannot read user B's data
 - [ ] File upload: type + size limits (5 MB images, 10 MB CSV)
@@ -403,10 +404,10 @@ VITE_API_URL=http://localhost:5000/api
 - [x] GitHub Actions CI (lint, format check, test)
 
 ### Phase 1 — Auth
-- [ ] User + RefreshToken models, register/login/refresh/logout/me
-- [ ] Auth middleware; login rate limit
+- [x] User + RefreshToken models, register/login/refresh/logout/me
+- [x] Auth middleware; login rate limit
 - [ ] Client: login/register pages, protected routes, axios refresh interceptor, auth store
-- [ ] API tests for auth
+- [x] API tests for auth
 
 ### Phase 2 — Wallets, categories, transactions
 - [ ] Models + default category seeding on register
@@ -464,7 +465,7 @@ Each checkpoint is a small, working, pushable state. Claude stops after each one
 - [x] **CP4 CI** — GitHub Actions: lint, format check, test for client + server
 
 **Phase 1 — Auth**
-- [ ] **CP5 Auth backend** — User + RefreshToken models, register/login/refresh/logout/me, auth middleware, login rate limit, API tests
+- [x] **CP5 Auth backend** — User + RefreshToken models, register/login/refresh/logout/me, auth middleware, login rate limit, API tests
 - [ ] **CP6 Auth frontend** — login/register pages, auth store, axios refresh interceptor, protected routes
 
 **Phase 2 — Wallets, categories, transactions**

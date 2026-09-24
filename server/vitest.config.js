@@ -10,6 +10,11 @@ export default defineConfig({
       MONGODB_URI: 'mongodb://127.0.0.1:27017/paisa-pal-test',
       CLIENT_URL: 'http://localhost:5173',
       REDIS_URL: '',
+      // Test-only secrets — never used outside the test run.
+      JWT_ACCESS_SECRET: 'test-access-secret-0123456789abcdefghijklmnop',
+      JWT_REFRESH_SECRET: 'test-refresh-secret-0123456789abcdefghijklmno',
+      // Low bcrypt cost keeps auth tests fast; real runs use 12.
+      BCRYPT_ROUNDS: '4',
     },
     // The first run downloads a MongoDB binary for mongodb-memory-server.
     hookTimeout: 180_000,

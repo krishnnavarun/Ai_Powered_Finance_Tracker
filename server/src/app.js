@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
@@ -8,7 +9,7 @@ import { logger } from './config/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 import { sanitizeRequest } from './middleware/sanitize.js';
-import apiRouter from './routes/index.js';
+import { createApiRouter } from './routes/index.js';
 
 const httpLogger = pinoHttp({
   logger,
@@ -43,9 +44,10 @@ export function createApp() {
   app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: false, limit: '1mb' }));
+  app.use(cookieParser());
   app.use(sanitizeRequest);
 
-  app.use('/api', apiRouter);
+  app.use('/api', createApiRouter());
 
   app.use(notFound);
   app.use(errorHandler);
