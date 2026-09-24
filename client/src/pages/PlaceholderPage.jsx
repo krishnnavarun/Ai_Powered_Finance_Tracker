@@ -13,8 +13,8 @@ export function PlaceholderPage() {
       <PageHeader title={page.title} description={page.description} />
       <EmptyState
         icon={page.icon}
-        title={`${page.title} is on the way`}
-        description={`This page is built in checkpoint ${page.checkpoint}.`}
+        title="Coming soon"
+        description={`We're still building ${page.title}. Check back soon!`}
       />
     </>
   );

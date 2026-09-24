@@ -1,45 +1,98 @@
-import { LayoutDashboard, Percent, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { ChartPie, PiggyBank, TrendingDown, TrendingUp } from 'lucide-react';
+import { m } from 'motion/react';
+import { AnimatedMoney } from '@/components/common/AnimatedMoney';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Money } from '@/components/common/Money';
 import { PageHeader } from '@/components/common/PageHeader';
+import { BalanceCard } from '@/features/dashboard/BalanceCard';
+import { useTransactions } from '@/features/transactions/useTransactions';
+import { useWallets } from '@/features/wallets/useWallets';
+import { startOfMonth, toLocalDate, useTimeZone } from '@/lib/dates';
 import { firstName } from '@/lib/user';
+import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
 
-// Placeholder numbers until transactions exist (CP8); the real dashboard arrives in CP11.
-const STATS = [
-  { label: 'Total balance', icon: Wallet, value: <Money paise={0} /> },
-  { label: 'Income this month', icon: TrendingUp, value: <Money paise={0} tone="income" /> },
-  { label: 'Spent this month', icon: TrendingDown, value: <Money paise={0} tone="expense" /> },
-  { label: 'Savings rate', icon: Percent, value: <span className="tabular-nums">0%</span> },
-];
+// Cards slide in one after another.
+const list = { show: { transition: { staggerChildren: 0.08 } } };
+const item = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
+};
+
+function StatCard({ label, icon: Icon, tone, children }) {
+  return (
+    <m.div
+      variants={item}
+      whileHover={{ y: -3 }}
+      className="surface p-4 transition-shadow hover:shadow-lg"
+    >
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        {label}
+        <span
+          className={cn(
+            'flex size-8 items-center justify-center rounded-lg',
+            tone === 'income' && 'bg-income/12 text-income',
+            tone === 'expense' && 'bg-expense/12 text-expense',
+            tone === 'gold' && 'bg-gold/20 text-gold-foreground dark:text-gold',
+          )}
+        >
+          <Icon className="size-4" aria-hidden="true" />
+        </span>
+      </div>
+      <p className="mt-3 text-2xl font-semibold">{children}</p>
+    </m.div>
+  );
+}
 
 export function DashboardPage() {
   const name = useAuthStore((state) => firstName(state.user?.name));
+  const timeZone = useTimeZone();
+  const today = toLocalDate(new Date(), timeZone);
+  const { data: wallets = [] } = useWallets();
+  // Only the totals are needed, so ask for the smallest page.
+  const { data: month } = useTransactions({ from: startOfMonth(today), to: today, limit: 1 });
+
+  const balance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
+  const income = month?.totals.income ?? 0;
+  const spent = month?.totals.expense ?? 0;
+  const saved = income - spent;
+  const savingsRate = income > 0 ? Math.round((saved / income) * 100) : 0;
 
   return (
     <>
       <PageHeader
         title="Dashboard"
-        description={name ? `Hi ${name}, here's your money at a glance` : 'Your money at a glance'}
+        description={name ? `Hi ${name}, here's your money today` : 'Your money today'}
       />
 
-      <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {STATS.map(({ label, icon: Icon, value }) => (
-          <div key={label} className="rounded-xl border bg-card p-4 text-card-foreground shadow-xs">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              {label}
-              <Icon className="size-4" aria-hidden="true" />
-            </div>
-            <p className="mt-2 text-2xl font-semibold">{value}</p>
-          </div>
-        ))}
-      </section>
+      <m.section
+        aria-label="Summary"
+        className="grid gap-4 lg:grid-cols-3"
+        variants={list}
+        initial="hidden"
+        animate="show"
+      >
+        <m.div variants={item} className="lg:row-span-2">
+          <BalanceCard balance={balance} walletCount={wallets.length} />
+        </m.div>
+        <div className="grid gap-4 sm:grid-cols-3 lg:col-span-2 lg:grid-cols-2">
+          <StatCard label="Money in this month" icon={TrendingUp} tone="income">
+            <AnimatedMoney paise={income} className="text-income" />
+          </StatCard>
+          <StatCard label="Money out this month" icon={TrendingDown} tone="expense">
+            <AnimatedMoney paise={spent} className="text-expense" />
+          </StatCard>
+          <StatCard label="Saved this month" icon={PiggyBank} tone="gold">
+            <AnimatedMoney paise={Math.max(saved, 0)} />
+            <span className="ml-2 text-sm font-medium text-muted-foreground">{savingsRate}%</span>
+          </StatCard>
+        </div>
+      </m.section>
 
       <EmptyState
         className="mt-6"
-        icon={LayoutDashboard}
-        title="Your dashboard is getting ready"
-        description="Once you sign in and add transactions, you'll see charts, budgets, forecasts and your health score here."
+        icon={ChartPie}
+        title="More is coming"
+        description="Charts, budgets and money tips will show up here soon."
       />
     </>
   );

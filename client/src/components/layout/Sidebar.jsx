@@ -5,7 +5,7 @@ import { NavItemLink } from './NavItemLink';
 // Desktop navigation (md and up). Phones use MobileNav instead.
 export function Sidebar() {
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground backdrop-blur-xl md:flex">
       <div className="flex h-14 items-center px-5">
         <Logo />
       </div>
@@ -13,7 +13,7 @@ export function Sidebar() {
       <nav aria-label="Main" className="flex flex-1 flex-col overflow-y-auto px-3 py-2">
         {NAV_SECTIONS.map((section) => (
           <div key={section.label} className="mb-4">
-            <p className="px-3 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">
               {section.label}
             </p>
             <ul className="space-y-0.5">

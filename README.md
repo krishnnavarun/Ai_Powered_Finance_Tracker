@@ -50,6 +50,8 @@ Set `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` to two **different** random str
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
+Receipt photos are saved in `server/uploads/` by default (`RECEIPT_STORAGE=local`). For the deployed app set `RECEIPT_STORAGE=cloudinary` and your free Cloudinary keys — photos are stored as private images and only their owner can view them.
+
 `REDIS_URL` is optional — leave it empty to run without Redis, or use a free [Upstash](https://upstash.com) `rediss://...` URL.
 
 ```bash

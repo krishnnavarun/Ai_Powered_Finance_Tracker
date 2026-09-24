@@ -1,5 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query';
+import { domMax, LazyMotion, MotionConfig } from 'motion/react';
 import { useState } from 'react';
+import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useSessionBootstrap } from '@/hooks/useSessionBootstrap';
 import { useThemeSync } from '@/hooks/useThemeSync';
@@ -14,7 +16,15 @@ export function AppProviders({ children, queryClient }) {
 
   return (
     <QueryClientProvider client={client}>
-      <TooltipProvider>{children}</TooltipProvider>
+      {/* reducedMotion="user": follows the device's "reduce motion" setting. */}
+      <MotionConfig reducedMotion="user">
+        <LazyMotion features={domMax}>
+          <TooltipProvider>
+            {children}
+            <Toaster position="top-center" richColors closeButton />
+          </TooltipProvider>
+        </LazyMotion>
+      </MotionConfig>
     </QueryClientProvider>
   );
 }

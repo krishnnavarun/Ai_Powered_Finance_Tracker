@@ -33,7 +33,7 @@ describe('app layout and routing', () => {
     await user.click(within(sidebar).getByRole('link', { name: 'Budgets' }));
 
     expect(await heading('Budgets')).toBeInTheDocument();
-    expect(screen.getByText('This page is built in checkpoint CP11.')).toBeInTheDocument();
+    expect(screen.getByText("We're still building Budgets. Check back soon!")).toBeInTheDocument();
     expect(within(sidebar).getByRole('link', { name: 'Budgets' })).toHaveAttribute(
       'aria-current',
       'page',

@@ -37,3 +37,13 @@ export function parseRupeesToPaise(value) {
   if (!Number.isSafeInteger(paise)) return null;
   return negative && paise !== 0 ? -paise : paise;
 }
+
+// The opposite, for pre-filling an edit form: 250050 → "2500.50", 250000 → "2500".
+export function paiseToInput(paise) {
+  if (paise === null || paise === undefined) return '';
+  const sign = paise < 0 ? '-' : '';
+  const abs = Math.abs(paise);
+  const rupees = Math.floor(abs / 100);
+  const rest = abs % 100;
+  return rest ? `${sign}${rupees}.${String(rest).padStart(2, '0')}` : `${sign}${rupees}`;
+}

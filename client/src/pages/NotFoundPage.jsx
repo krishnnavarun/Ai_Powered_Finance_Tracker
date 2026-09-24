@@ -10,7 +10,7 @@ export function NotFoundPage() {
       icon={Compass}
       titleAs="h1"
       title="Page not found"
-      description="The page you're looking for doesn't exist or has moved."
+      description="We could not find this page."
       action={
         <Button asChild>
           <Link to="/dashboard">Go to dashboard</Link>

@@ -8,6 +8,11 @@ export function applyServerErrors(form, error, fields) {
     applied = true;
   }
 
+  if (error?.code === 'DUPLICATE_NAME' && fields.includes('name')) {
+    form.setError('name', { message: error.message }, { shouldFocus: true });
+    applied = true;
+  }
+
   if (error?.code === 'VALIDATION_ERROR' && Array.isArray(error.details)) {
     for (const { path, message } of error.details) {
       if (fields.includes(path)) {

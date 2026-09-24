@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { vi } from 'vitest';
@@ -9,9 +9,11 @@ import { useAuthStore } from '@/store/auth';
 import { testUser } from './msw';
 
 // Fakes window.matchMedia; `prefersDark` controls the OS dark-mode answer.
+// Tests always "prefer reduced motion": animations are skipped and amounts show their
+// final value at once, so results are exact and repeatable.
 export function mockMatchMedia(prefersDark = false) {
   window.matchMedia = vi.fn((query) => ({
-    matches: query.includes('dark') ? prefersDark : false,
+    matches: query.includes('dark') ? prefersDark : query.includes('reduced-motion'),
     media: query,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
@@ -19,6 +21,13 @@ export function mockMatchMedia(prefersDark = false) {
     removeListener: vi.fn(),
     dispatchEvent: vi.fn(),
   }));
+}
+
+// Waits for a toast message. Sonner renders each toast twice (visible + screen-reader
+// announcement), so this accepts one or more matches.
+export async function findToast(text) {
+  const matches = await screen.findAllByText(text);
+  return matches[0];
 }
 
 // Renders the real app routes at the given URL, without a browser.

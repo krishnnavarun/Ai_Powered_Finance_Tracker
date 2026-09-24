@@ -8,7 +8,7 @@ import { PasswordInput } from '@/components/common/PasswordInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { registerSchema } from '@/features/auth/schemas';
-import { applyServerErrors } from '@/features/auth/serverErrors';
+import { applyServerErrors } from '@/lib/serverErrors';
 import { useRegister } from '@/features/auth/useAuthMutations';
 
 const FIELDS = ['name', 'email', 'password'];
@@ -35,9 +35,7 @@ export function RegisterPage() {
     <>
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Free, private, and ready in under a minute.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">It is free and takes one minute.</p>
       </div>
 
       <form onSubmit={onSubmit} noValidate className="grid gap-4">

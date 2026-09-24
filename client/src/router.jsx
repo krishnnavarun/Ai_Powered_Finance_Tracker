@@ -15,6 +15,8 @@ function lazyPage(load, exportName) {
 // Real pages replace the placeholder here as each checkpoint lands.
 const PAGE_LOADERS = {
   '/dashboard': lazyPage(() => import('@/pages/DashboardPage'), 'DashboardPage'),
+  '/transactions': lazyPage(() => import('@/pages/TransactionsPage'), 'TransactionsPage'),
+  '/wallets': lazyPage(() => import('@/pages/WalletsPage'), 'WalletsPage'),
 };
 const placeholderPage = lazyPage(() => import('@/pages/PlaceholderPage'), 'PlaceholderPage');
 

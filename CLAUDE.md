@@ -24,6 +24,15 @@
 - Client data: call the API only through `client/src/api/*` (shared axios instance handles tokens + refresh); server state via TanStack Query; errors are `ApiError` with `code`/`message`. Pages are lazy-loaded in `router.jsx`. Client tests fake the API with MSW (`client/src/test/msw.js`).
 - Ownership: load user-owned docs with `findOwnedOrThrow(Model, userId, id)` — another user's id returns the same 404 as a missing one. Every new resource adds cases to `server/tests/api/isolation.test.js`.
 - Server API tests need a replica set for transactions: `tests/helpers/db.js` starts a one-node in-memory replica set; create a fresh `createApp()` per test (fresh rate-limit counters).
+- Dates: the API accepts a local day (`"2026-09-24"` = start of that day in the user's `timezone`, default Asia/Kolkata) or a full ISO timestamp with offset. `from`/`to` filters are inclusive local days. Helpers in `server/src/utils/dates.js`.
+- Every change to transactions goes through `transaction.service.js` (one MongoDB transaction for the row + wallet balances). Never `$inc` a wallet balance anywhere else. `tests/helpers/fixtures.js#expectBalancesConsistent` checks the invariant.
+- **Design system (CP9, chosen by the user): emerald + gold, soft aurora background, balanced motion.**
+  - Colours are CSS variables in `client/src/styles/index.css` (`--primary` emerald, `--gold`, `--income`/`--expense`). Never hard-code brand colours in components; money colours always come with a +/− sign.
+  - Surfaces: use the `surface` utility (glass card) and `glass`; pages sit on `<AuroraBackground />` (already in AppLayout/AuthLayout).
+  - Motion: import `m` from `motion/react` (LazyMotion is set up in AppProviders — do not use `motion.div`). Buttons press/shine, cards lift on hover, lists stagger in, money uses `<AnimatedMoney>`. Keep it calm; everything must still work with reduced motion (CSS media query + `MotionConfig reducedMotion="user"`).
+  - Copy: short, plain English (e.g. "Money in and money out"). No internal jargon like checkpoint names in the UI.
+  - Tests run with reduced motion on (`mockMatchMedia`), and `toast.dismiss()` runs after each test (sonner keeps a global store).
+- Receipts: always served through `GET /api/transactions/:id/receipt` (owner only, `Cache-Control: private`); storage drivers in `server/src/storage/` (`local` | `cloudinary` private images). File type is checked from the bytes, max 5 MB; photos are deleted after their transaction is deleted.
 - Prefer small, readable files. Business logic lives in `services/`, not controllers.
 - Write unit tests for every analytics function and parser.
 
@@ -60,7 +69,7 @@
 | Forms / validation | React Hook Form + Zod |
 | Charts | Recharts |
 | Routing | React Router |
-| Animations | Framer Motion (light use) |
+| Animations | Motion (`motion/react`, formerly Framer Motion) — balanced use, always respects "reduce motion" |
 | Backend | Node.js + Express (JavaScript, ES modules) |
 | Database | MongoDB Atlas + Mongoose |
 | Cache / rate limit / queues | Redis (Upstash) + BullMQ |
@@ -213,10 +222,10 @@ Indexes: `{userId, date:-1}`, `{userId, categoryId, date}`, `{userId, merchantKe
 ### 6.1 Core
 - [x] Register / login / logout / refresh / me (Google login: optional, not built yet)
 - [ ] Onboarding: currency, month start day, create first wallets, optional CSV import, enable AI
-- [ ] Wallets: CRUD, archive, balance, transfers
-- [ ] Categories: defaults + custom, icons/colors
-- [ ] Transactions: CRUD, filters (date range, wallet, category, type, tag, amount range, search), pagination, bulk delete/re-categorize
-- [ ] Receipt image attach (Cloudinary)
+- [x] Wallets: CRUD, archive, balance, transfers
+- [ ] Categories: defaults + custom, icons/colors (API done in CP7; a page to manage them comes with Settings, CP24)
+- [x] Transactions: CRUD, filters (date range, wallet, category, type, tag, amount range, search), pagination, bulk delete/re-categorize
+- [x] Receipt image attach (local disk in dev, private Cloudinary images in production)
 - [ ] Budgets: per category + overall, monthly, progress, alerts at 80%/100%, optional rollover
 - [ ] Goals: target, deadline, contributions, required-per-month calculation
 - [ ] Recurring transactions (rent, salary, EMI)
@@ -325,7 +334,7 @@ auth         POST /auth/register · /auth/login · /auth/refresh · /auth/logout
 users        PATCH /users/me · PATCH /users/me/settings · GET /users/me/export · DELETE /users/me
 wallets      GET/POST /wallets · GET/PATCH/DELETE /wallets/:id · POST /wallets/transfer
 categories   GET/POST /categories · PATCH/DELETE /categories/:id
-transactions GET /transactions (filters, cursor/page) · POST · PATCH/DELETE /:id · POST /bulk · POST /:id/receipt
+transactions GET /transactions (from,to,type,walletId,categoryId,tag,minAmount,maxAmount,q,sort,page,limit → {transactions, totals, pagination}) · POST · GET/PATCH/DELETE /:id · POST /bulk ({action:'delete'|'categorize', ids ≤200, categoryId?}) · POST /:id/receipt
 recurring    GET/POST /recurring · PATCH/DELETE /recurring/:id
 budgets      GET /budgets?month= · POST · PATCH/DELETE /:id · GET /budgets/status?month=
 goals        GET/POST /goals · PATCH/DELETE /goals/:id · POST /goals/:id/contribute
@@ -385,6 +394,8 @@ GROQ_API_KEY=
 OLLAMA_BASE_URL=http://localhost:11434
 LLM_MODEL_FAST=
 LLM_MODEL_SMART=
+RECEIPT_STORAGE=local          # local | cloudinary (use cloudinary when deployed)
+UPLOAD_DIR=uploads
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
@@ -414,10 +425,10 @@ VITE_API_URL=http://localhost:5000/api
 - [x] API tests for auth
 
 ### Phase 2 — Wallets, categories, transactions
-- [ ] Models + default category seeding on register
-- [ ] Transaction service with Mongo sessions updating wallet balances; transfers
-- [ ] Transactions page with filters, pagination, add/edit modal (manual tab), receipt upload
-- [ ] Tests: balance consistency on create/edit/delete/transfer; user isolation
+- [x] Models + default category seeding on register
+- [x] Transaction service with Mongo sessions updating wallet balances; transfers
+- [x] Transactions page with filters, pagination, add/edit modal (manual tab), receipt upload
+- [x] Tests: balance consistency on create/edit/delete/transfer; user isolation
 
 ### Phase 3 — Budgets, goals, recurring, dashboard, reports
 - [ ] Budgets + status aggregation; Goals + contributions; RecurringRule CRUD
@@ -474,8 +485,8 @@ Each checkpoint is a small, working, pushable state. Claude stops after each one
 
 **Phase 2 — Wallets, categories, transactions**
 - [x] **CP7 Wallets + categories backend** — models, CRUD, default category seeding on register, tests
-- [ ] **CP8 Transactions backend** — transaction service with Mongo sessions, transfers, filters/pagination, bulk; balance-consistency + user-isolation tests
-- [ ] **CP9 Transactions + wallets UI** — Transactions page, filters, pagination, add/edit modal (manual), Wallets page, receipt upload (Cloudinary)
+- [x] **CP8 Transactions backend** — transaction service with Mongo sessions, transfers, filters/pagination, bulk; balance-consistency + user-isolation tests
+- [x] **CP9 Transactions + wallets UI** — Transactions page, filters, pagination, add/edit modal (manual), Wallets page, receipt upload (Cloudinary)
 
 **Phase 3 — Budgets, goals, recurring, dashboard, reports**
 - [ ] **CP10 Budgets, goals, recurring backend** — CRUD, budget status aggregation, goal contributions, tests

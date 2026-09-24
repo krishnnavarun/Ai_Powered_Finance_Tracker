@@ -26,7 +26,7 @@ export function LoginPage() {
     <>
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Log in to see where your money went.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Log in to see your money.</p>
       </div>
 
       <form onSubmit={onSubmit} noValidate className="grid gap-4">

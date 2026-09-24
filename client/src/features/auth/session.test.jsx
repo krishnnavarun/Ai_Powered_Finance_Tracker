@@ -34,7 +34,7 @@ describe('after logging in', () => {
 
   it('greets the user by first name on the dashboard', async () => {
     renderApp('/dashboard');
-    expect(await screen.findByText("Hi Asha, here's your money at a glance")).toBeInTheDocument();
+    expect(await screen.findByText("Hi Asha, here's your money today")).toBeInTheDocument();
   });
 });
 

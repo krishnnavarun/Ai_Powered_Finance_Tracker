@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { formatMoney, parseRupeesToPaise } from './money';
+import { formatMoney, paiseToInput, parseRupeesToPaise } from './money';
+
+describe('paiseToInput', () => {
+  it.each([
+    [250050, '2500.50'],
+    [250000, '2500'],
+    [5, '0.05'],
+    [-120000, '-1200'],
+    [0, '0'],
+    [null, ''],
+  ])('%j → %j', (paise, expected) => {
+    expect(paiseToInput(paise)).toBe(expected);
+  });
+
+  it('round-trips with parseRupeesToPaise', () => {
+    for (const paise of [1, 99, 100, 123456789, -5001]) {
+      expect(parseRupeesToPaise(paiseToInput(paise))).toBe(paise);
+    }
+  });
+});
 
 describe('formatMoney', () => {
   it('uses Indian digit grouping', () => {

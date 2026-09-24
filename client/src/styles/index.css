@@ -4,69 +4,80 @@
 /* Dark mode is driven by a `dark` class on <html> (set by the theme store). */
 @custom-variant dark (&:is(.dark *));
 
-/* Brand: a calm green-teal for money, neutral greys everywhere else. */
+/* Brand: deep emerald for money and growth, warm gold for highlights. */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.985 0.002 165);
-  --foreground: oklch(0.2 0.01 165);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.01 165);
+  --radius: 0.75rem;
+  --background: oklch(0.975 0.01 162);
+  --foreground: oklch(0.21 0.035 168);
+  --card: oklch(1 0 0 / 82%);
+  --card-foreground: oklch(0.21 0.035 168);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.01 165);
-  --primary: oklch(0.52 0.12 165);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.96 0.006 165);
-  --secondary-foreground: oklch(0.25 0.01 165);
-  --muted: oklch(0.96 0.006 165);
-  --muted-foreground: oklch(0.5 0.01 165);
-  --accent: oklch(0.95 0.02 165);
-  --accent-foreground: oklch(0.25 0.03 165);
-  --destructive: oklch(0.58 0.22 27);
-  --border: oklch(0.91 0.006 165);
-  --input: oklch(0.91 0.006 165);
-  --ring: oklch(0.52 0.12 165);
-  /* Semantic money colours: always paired with a +/− sign or icon, never colour alone. */
-  --income: oklch(0.55 0.14 155);
-  --expense: oklch(0.58 0.2 27);
-  --sidebar: oklch(0.975 0.004 165);
-  --sidebar-foreground: oklch(0.25 0.01 165);
-  --sidebar-primary: oklch(0.52 0.12 165);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.93 0.025 165);
-  --sidebar-accent-foreground: oklch(0.22 0.03 165);
-  --sidebar-border: oklch(0.91 0.006 165);
-  --sidebar-ring: oklch(0.52 0.12 165);
+  --popover-foreground: oklch(0.21 0.035 168);
+  --primary: oklch(0.47 0.11 164);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.02 160);
+  --secondary-foreground: oklch(0.26 0.04 166);
+  --muted: oklch(0.95 0.015 160);
+  --muted-foreground: oklch(0.47 0.03 165);
+  --accent: oklch(0.93 0.04 160);
+  --accent-foreground: oklch(0.25 0.05 166);
+  --destructive: oklch(0.57 0.21 27);
+  --border: oklch(0.88 0.02 162);
+  --input: oklch(0.87 0.022 162);
+  --ring: oklch(0.55 0.13 164);
+  --gold: oklch(0.78 0.14 78);
+  --gold-foreground: oklch(0.28 0.06 70);
+  /* Money colours: always shown with a +/− sign too, never colour alone. */
+  --income: oklch(0.54 0.14 155);
+  --expense: oklch(0.56 0.2 27);
+  --sidebar: oklch(1 0 0 / 62%);
+  --sidebar-foreground: oklch(0.25 0.04 166);
+  --sidebar-primary: oklch(0.47 0.11 164);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.47 0.11 164 / 12%);
+  --sidebar-accent-foreground: oklch(0.3 0.08 164);
+  --sidebar-border: oklch(0.88 0.02 162 / 70%);
+  --sidebar-ring: oklch(0.55 0.13 164);
+  /* Aurora background lights */
+  --aurora-1: oklch(0.72 0.15 163 / 45%);
+  --aurora-2: oklch(0.8 0.12 190 / 35%);
+  --aurora-3: oklch(0.86 0.14 85 / 40%);
 }
 
 .dark {
-  --background: oklch(0.16 0.008 165);
-  --foreground: oklch(0.96 0.004 165);
-  --card: oklch(0.2 0.01 165);
-  --card-foreground: oklch(0.96 0.004 165);
-  --popover: oklch(0.2 0.01 165);
-  --popover-foreground: oklch(0.96 0.004 165);
-  --primary: oklch(0.72 0.13 165);
-  --primary-foreground: oklch(0.18 0.02 165);
-  --secondary: oklch(0.26 0.01 165);
-  --secondary-foreground: oklch(0.96 0.004 165);
-  --muted: oklch(0.26 0.01 165);
-  --muted-foreground: oklch(0.7 0.01 165);
-  --accent: oklch(0.28 0.03 165);
-  --accent-foreground: oklch(0.96 0.004 165);
-  --destructive: oklch(0.68 0.19 25);
-  --border: oklch(1 0 0 / 10%);
+  --background: oklch(0.14 0.022 170);
+  --foreground: oklch(0.95 0.01 160);
+  --card: oklch(0.2 0.028 168 / 72%);
+  --card-foreground: oklch(0.95 0.01 160);
+  --popover: oklch(0.2 0.028 168);
+  --popover-foreground: oklch(0.95 0.01 160);
+  --primary: oklch(0.74 0.15 162);
+  --primary-foreground: oklch(0.15 0.035 170);
+  --secondary: oklch(0.25 0.03 168);
+  --secondary-foreground: oklch(0.95 0.01 160);
+  --muted: oklch(0.25 0.03 168);
+  --muted-foreground: oklch(0.72 0.03 160);
+  --accent: oklch(0.28 0.05 165);
+  --accent-foreground: oklch(0.95 0.01 160);
+  --destructive: oklch(0.67 0.19 25);
+  --border: oklch(1 0 0 / 11%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.72 0.13 165);
-  --income: oklch(0.74 0.15 155);
+  --ring: oklch(0.74 0.15 162);
+  --gold: oklch(0.83 0.13 84);
+  --gold-foreground: oklch(0.22 0.05 70);
+  --income: oklch(0.76 0.15 155);
   --expense: oklch(0.72 0.17 25);
-  --sidebar: oklch(0.18 0.009 165);
-  --sidebar-foreground: oklch(0.96 0.004 165);
-  --sidebar-primary: oklch(0.72 0.13 165);
-  --sidebar-primary-foreground: oklch(0.18 0.02 165);
-  --sidebar-accent: oklch(0.26 0.03 165);
-  --sidebar-accent-foreground: oklch(0.96 0.004 165);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.72 0.13 165);
+  --sidebar: oklch(0.17 0.025 170 / 60%);
+  --sidebar-foreground: oklch(0.95 0.01 160);
+  --sidebar-primary: oklch(0.74 0.15 162);
+  --sidebar-primary-foreground: oklch(0.15 0.035 170);
+  --sidebar-accent: oklch(0.74 0.15 162 / 14%);
+  --sidebar-accent-foreground: oklch(0.9 0.05 160);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: oklch(0.74 0.15 162);
+  --aurora-1: oklch(0.55 0.15 163 / 45%);
+  --aurora-2: oklch(0.5 0.12 195 / 35%);
+  --aurora-3: oklch(0.7 0.13 80 / 22%);
 }
 
 @theme inline {
@@ -92,6 +103,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
   --color-income: var(--income);
   --color-expense: var(--expense);
   --color-sidebar: var(--sidebar);
@@ -102,6 +115,89 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --animate-shine: shine 0.9s ease-out;
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes shine {
+    from {
+      transform: translateX(-120%) skewX(-20deg);
+    }
+    to {
+      transform: translateX(320%) skewX(-20deg);
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+}
+
+/* ---- Aurora background: large blurred lights drifting slowly behind everything ---- */
+@keyframes aurora-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(12vw, 8vh, 0) scale(1.15);
+  }
+  66% {
+    transform: translate3d(-8vw, 14vh, 0) scale(0.92);
+  }
+}
+@keyframes aurora-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+  50% {
+    transform: translate3d(-14vw, -10vh, 0) scale(0.9);
+  }
+}
+@keyframes aurora-c {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(0.95);
+  }
+  40% {
+    transform: translate3d(10vw, -12vh, 0) scale(1.1);
+  }
+  80% {
+    transform: translate3d(-6vw, 6vh, 0) scale(1);
+  }
+}
+
+@utility aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  will-change: transform;
+}
+
+/* Frosted-glass surface for cards, sidebar and top bar, so the aurora glows through. */
+@utility glass {
+  background-color: var(--card);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+}
+
+/* Standard card: glass, rounded, soft shadow. */
+@utility surface {
+  border-radius: calc(var(--radius) + 4px);
+  border: 1px solid var(--border);
+  background-color: var(--card);
+  color: var(--card-foreground);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  box-shadow:
+    0 1px 2px oklch(0 0 0 / 4%),
+    0 8px 24px -12px oklch(0.3 0.08 165 / 18%);
 }
 
 @layer base {
@@ -116,5 +212,20 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+  }
+  ::selection {
+    background-color: oklch(0.78 0.14 78 / 35%);
+  }
+}
+
+/* People who ask their device for less motion get a still, calm interface. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

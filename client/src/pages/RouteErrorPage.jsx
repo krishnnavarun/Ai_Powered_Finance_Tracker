@@ -14,7 +14,7 @@ export function RouteErrorPage() {
         icon={TriangleAlert}
         titleAs="h1"
         title="Something went wrong"
-        description={message ?? 'An unexpected error happened. Reloading usually fixes it.'}
+        description={message ?? 'Something broke. Reloading the page usually fixes it.'}
         action={
           <Button onClick={() => window.location.reload()}>
             <RefreshCw aria-hidden="true" />

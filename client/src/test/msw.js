@@ -26,12 +26,25 @@ export function session(accessToken = 'access-token-1', user = testUser) {
   return HttpResponse.json({ success: true, data: { user, accessToken } });
 }
 
-// Defaults: nobody is logged in (no refresh cookie); logout always succeeds.
+const empty = (data) => HttpResponse.json({ success: true, data });
+
+// Defaults: nobody is logged in (no refresh cookie); logout always succeeds; the user
+// has no wallets or transactions yet. Tests override these with server.use() or
+// installFakeApi().
 export const server = setupServer(
   http.post('*/api/auth/refresh', () =>
     apiError(401, 'INVALID_REFRESH_TOKEN', 'Please log in again'),
   ),
   http.post('*/api/auth/logout', () => new HttpResponse(null, { status: 204 })),
+  http.get('*/api/wallets', () => empty({ wallets: [] })),
+  http.get('*/api/categories', () => empty({ categories: [] })),
+  http.get('*/api/transactions', () =>
+    empty({
+      transactions: [],
+      totals: { income: 0, expense: 0, transfer: 0 },
+      pagination: { page: 1, limit: 25, total: 0, totalPages: 1 },
+    }),
+  ),
 );
 
 export { http, HttpResponse };
