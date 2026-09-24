@@ -1,3 +1,5 @@
+import { Goal } from '../models/Goal.js';
+import { RecurringRule } from '../models/RecurringRule.js';
 import { Transaction } from '../models/Transaction.js';
 import { Wallet } from '../models/Wallet.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -81,5 +83,18 @@ export async function deleteWallet(userId, walletId) {
       'This wallet has transactions. Archive it to hide it, or delete its transactions first.',
     );
   }
+  const plannedUse = await RecurringRule.exists({
+    userId,
+    $or: [{ 'template.walletId': wallet._id }, { 'template.toWalletId': wallet._id }],
+  });
+  if (plannedUse) {
+    throw new ApiError(
+      409,
+      'WALLET_IN_USE',
+      'A recurring payment uses this wallet. Change or delete that payment first, or archive the wallet.',
+    );
+  }
+  // Goals only point at the wallet for display; unlink them.
+  await Goal.updateMany({ userId, linkedWalletId: wallet._id }, { $set: { linkedWalletId: null } });
   await wallet.deleteOne();
 }

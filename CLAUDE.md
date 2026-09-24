@@ -23,7 +23,7 @@
 - API responses: success → `{ success: true, data: {...} }`; errors → the standard error shape (Section 8). Protected routes use `requireAuth` and read the user from `req.user.id`. Validate input with `validate({ body, query, params })` + Zod schemas in `server/src/validators/`.
 - Client data: call the API only through `client/src/api/*` (shared axios instance handles tokens + refresh); server state via TanStack Query; errors are `ApiError` with `code`/`message`. Pages are lazy-loaded in `router.jsx`. Client tests fake the API with MSW (`client/src/test/msw.js`).
 - Ownership: load user-owned docs with `findOwnedOrThrow(Model, userId, id)` — another user's id returns the same 404 as a missing one. Every new resource adds cases to `server/tests/api/isolation.test.js`.
-- Server API tests need a replica set for transactions: `tests/helpers/db.js` starts a one-node in-memory replica set; create a fresh `createApp()` per test (fresh rate-limit counters).
+- Server API tests: `tests/globalSetup.js` starts ONE in-memory MongoDB replica set (transactions need a replica set) for the whole run; `tests/helpers/db.js` gives each test file its own database on it. Create a fresh `createApp()` per test (fresh rate-limit counters). Tests that depend on "today" fake only Date: `vi.useFakeTimers({ toFake: ['Date'] })`.
 - Dates: the API accepts a local day (`"2026-09-24"` = start of that day in the user's `timezone`, default Asia/Kolkata) or a full ISO timestamp with offset. `from`/`to` filters are inclusive local days. Helpers in `server/src/utils/dates.js`.
 - Every change to transactions goes through `transaction.service.js` (one MongoDB transaction for the row + wallet balances). Never `$inc` a wallet balance anywhere else. `tests/helpers/fixtures.js#expectBalancesConsistent` checks the invariant.
 - **Design system (CP9, chosen by the user): emerald + gold, soft aurora background, balanced motion.**
@@ -33,6 +33,7 @@
   - Copy: short, plain English (e.g. "Money in and money out"). No internal jargon like checkpoint names in the UI.
   - Tests run with reduced motion on (`mockMatchMedia`), and `toast.dismiss()` runs after each test (sonner keeps a global store).
 - Receipts: always served through `GET /api/transactions/:id/receipt` (owner only, `Cache-Control: private`); storage drivers in `server/src/storage/` (`local` | `cloudinary` private images). File type is checked from the bytes, max 5 MB; photos are deleted after their transaction is deleted.
+- Budget months follow the user's `monthStartDay` (e.g. 25 → "2026-09" = 25 Sep–24 Oct) in their time zone: use `monthRange` / `monthContaining` in `server/src/utils/dates.js`. Budget and goal maths are pure functions (`budget.math.js`, `goal.math.js`) — status compares exact paise, never rounded percentages.
 - Prefer small, readable files. Business logic lives in `services/`, not controllers.
 - Write unit tests for every analytics function and parser.
 
@@ -193,10 +194,10 @@ Indexes: `{userId, date:-1}`, `{userId, categoryId, date}`, `{userId, merchantKe
 `userId, categoryId (null = overall), month ('YYYY-MM'), limit (paise), alertLevels [80,100], alertsSent[], rollover: boolean`
 
 **Goal**
-`userId, name, targetAmount, savedAmount, deadline, linkedWalletId?, icon, status: 'active'|'done'|'paused'`
+`userId, name, targetAmount, savedAmount, deadline (local date), linkedWalletId?, icon, color, status: 'active'|'done'|'paused', contributions[{amount, date, note}]` — reaching the target sets done; taking money out below it reopens
 
 **RecurringRule**
-`userId, template {walletId, type, amount, categoryId, merchant, note}, frequency: 'daily'|'weekly'|'monthly'|'yearly', interval, nextRun, endDate?, detectedByAI, active`
+`userId, template {walletId, toWalletId?, type, amount, categoryId, merchant, note}, frequency: 'daily'|'weekly'|'monthly'|'yearly', interval, startDate, endDate?, nextDate, nextRun, lastRunDate, detectedByAI, active` — dates are local 'YYYY-MM-DD'; every occurrence is counted from startDate (31st → 28 Feb → 31 Mar, no drift)
 
 **Subscription** (detected)
 `userId, merchantKey, displayName, avgAmount, periodDays, lastChargedAt, nextExpectedAt, yearlyCost, status: 'active'|'ignored'|'cancelled'`
@@ -335,9 +336,9 @@ users        PATCH /users/me · PATCH /users/me/settings · GET /users/me/export
 wallets      GET/POST /wallets · GET/PATCH/DELETE /wallets/:id · POST /wallets/transfer
 categories   GET/POST /categories · PATCH/DELETE /categories/:id
 transactions GET /transactions (from,to,type,walletId,categoryId,tag,minAmount,maxAmount,q,sort,page,limit → {transactions, totals, pagination}) · POST · GET/PATCH/DELETE /:id · POST /bulk ({action:'delete'|'categorize', ids ≤200, categoryId?}) · POST /:id/receipt
-recurring    GET/POST /recurring · PATCH/DELETE /recurring/:id
-budgets      GET /budgets?month= · POST · PATCH/DELETE /:id · GET /budgets/status?month=
-goals        GET/POST /goals · PATCH/DELETE /goals/:id · POST /goals/:id/contribute
+recurring    GET/POST /recurring · PATCH/DELETE /recurring/:id   (each rule has nextDate/nextRun + upcoming: next 3 dates)
+budgets      GET /budgets?month= · POST · PATCH/DELETE /:id · GET /budgets/status?month= (→ month, fromDate, toDate, daysLeft, totalSpent, budgets[{budget, spent, effectiveLimit, remaining, percent, status: ok|warning|over, dailyAllowance, rolloverAmount}])
+goals        GET/POST /goals · PATCH/DELETE /goals/:id · POST /goals/:id/contribute ({amount: +add / −take out}) — goals include progress {percent, remaining, monthsLeft, requiredPerMonth, overdue}
 reports      GET /reports/summary · /reports/by-category · /reports/trend · /reports/merchants · GET /reports/export?format=csv|pdf
 import       POST /import/csv/preview · POST /import/csv/commit
 ai           POST /ai/parse/text · /ai/parse/sms · /ai/parse/receipt
@@ -431,7 +432,7 @@ VITE_API_URL=http://localhost:5000/api
 - [x] Tests: balance consistency on create/edit/delete/transfer; user isolation
 
 ### Phase 3 — Budgets, goals, recurring, dashboard, reports
-- [ ] Budgets + status aggregation; Goals + contributions; RecurringRule CRUD
+- [x] Budgets + status aggregation; Goals + contributions; RecurringRule CRUD
 - [ ] Dashboard charts and cards; Reports page; CSV + PDF export
 - [ ] Onboarding flow
 - [ ] **Deploy v1** (non-AI tracker working end to end)
@@ -489,7 +490,7 @@ Each checkpoint is a small, working, pushable state. Claude stops after each one
 - [x] **CP9 Transactions + wallets UI** — Transactions page, filters, pagination, add/edit modal (manual), Wallets page, receipt upload (Cloudinary)
 
 **Phase 3 — Budgets, goals, recurring, dashboard, reports**
-- [ ] **CP10 Budgets, goals, recurring backend** — CRUD, budget status aggregation, goal contributions, tests
+- [x] **CP10 Budgets, goals, recurring backend** — CRUD, budget status aggregation, goal contributions, tests
 - [ ] **CP11 Budgets + goals UI and dashboard** — cards, charts, budget bars, recent transactions
 - [ ] **CP12 Reports + export** — Reports page, CSV + PDF export
 - [ ] **CP13 Onboarding + Deploy v1** — onboarding flow; non-AI tracker live

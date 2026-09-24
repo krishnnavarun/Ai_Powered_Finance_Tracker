@@ -195,3 +195,80 @@ describe('transactions are private', () => {
     expect((await Wallet.findById(ashaWallet.id)).balance).toBe(500000 - 25000);
   });
 });
+
+describe('budgets, goals and recurring payments are private', () => {
+  let ashaBudget;
+  let ashaGoal;
+  let ashaRule;
+
+  beforeEach(async () => {
+    ashaBudget = (
+      await asha
+        .post('/api/budgets')
+        .send({ categoryId: ashaCategory.id, month: '2026-09', limit: 100000 })
+    ).body.data.budget;
+    ashaGoal = (await asha.post('/api/goals').send({ name: 'Asha trip', targetAmount: 900000 }))
+      .body.data.goal;
+    ashaRule = (
+      await asha.post('/api/recurring').send({
+        template: { type: 'expense', amount: 5000, walletId: ashaWallet.id },
+        frequency: 'monthly',
+        startDate: '2026-09-01',
+      })
+    ).body.data.rule;
+  });
+
+  it("don't appear in another user's lists", async () => {
+    expect((await ravi.get('/api/budgets?month=2026-09')).body.data.budgets).toEqual([]);
+    expect((await ravi.get('/api/budgets/status?month=2026-09')).body.data.budgets).toEqual([]);
+    expect((await ravi.get('/api/goals')).body.data.goals).toEqual([]);
+    expect((await ravi.get('/api/recurring')).body.data.rules).toEqual([]);
+  });
+
+  it.each([
+    ['budget', () => ravi.patch(`/api/budgets/${ashaBudget.id}`).send({ limit: 1 })],
+    ['budget', () => ravi.delete(`/api/budgets/${ashaBudget.id}`)],
+    ['goal', () => ravi.patch(`/api/goals/${ashaGoal.id}`).send({ name: 'Mine now' })],
+    ['goal', () => ravi.delete(`/api/goals/${ashaGoal.id}`)],
+    ['goal', () => ravi.post(`/api/goals/${ashaGoal.id}/contribute`).send({ amount: 100 })],
+    [
+      'recurring payment',
+      () => ravi.patch(`/api/recurring/${ashaRule.id}`).send({ active: false }),
+    ],
+    ['recurring payment', () => ravi.delete(`/api/recurring/${ashaRule.id}`)],
+  ])("another user can't change a %s", async (_kind, attempt) => {
+    expect((await attempt()).status).toBe(404);
+  });
+
+  it("can't budget, save or schedule with another user's category or wallet", async () => {
+    const budget = await ravi
+      .post('/api/budgets')
+      .send({ categoryId: ashaCategory.id, month: '2026-09', limit: 1 });
+    const goal = await ravi
+      .post('/api/goals')
+      .send({ name: 'x', targetAmount: 1, linkedWalletId: ashaWallet.id });
+    const rule = await ravi.post('/api/recurring').send({
+      template: { type: 'expense', amount: 1, walletId: ashaWallet.id },
+      frequency: 'daily',
+      startDate: '2026-09-01',
+    });
+    expect([budget.status, goal.status, rule.status]).toEqual([404, 404, 404]);
+  });
+
+  it("other users' spending never counts toward a budget", async () => {
+    const raviWallet = (await ravi.post('/api/wallets').send({ name: 'R', type: 'cash' })).body.data
+      .wallet;
+    const raviSpend = await ravi.post('/api/transactions').send({
+      type: 'expense',
+      amount: 99999,
+      walletId: raviWallet.id,
+      date: '2026-09-10',
+    });
+    expect(raviSpend.status).toBe(201); // Ravi's spending really exists…
+
+    const status = await asha.get('/api/budgets/status?month=2026-09');
+    // …but Asha's month shows none of it.
+    expect(status.body.data.totalSpent).toBe(0);
+    expect(status.body.data.budgets[0].spent).toBe(0);
+  });
+});

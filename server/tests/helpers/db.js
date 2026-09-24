@@ -1,20 +1,12 @@
+import { randomUUID } from 'node:crypto';
 import mongoose from 'mongoose';
-import { MongoMemoryReplSet } from 'mongodb-memory-server';
+import { inject } from 'vitest';
 import { connectDB, disconnectDB } from '../../src/config/db.js';
 
-// A throwaway in-memory MongoDB per test file — no local database or Docker needed.
-// It runs as a one-node replica set because multi-document transactions
-// (sign-up, wallet balance updates) only work on replica sets.
-let mongo;
-
+// Each test file gets a fresh database of its own on the shared in-memory MongoDB that
+// tests/globalSetup.js starts once for the whole run.
 export async function startTestDB() {
-  mongo = await MongoMemoryReplSet.create({
-    replSet: { count: 1, storageEngine: 'wiredTiger' },
-    // Several test files start a database at the same time; on a busy machine the
-    // default 10s start-up limit is too tight.
-    instanceOpts: [{ launchTimeout: 60_000 }],
-  });
-  await connectDB(mongo.getUri());
+  await connectDB(inject('mongoUri'), { dbName: `test_${randomUUID().slice(0, 12)}` });
   // Build indexes (e.g. unique email) before tests rely on them.
   await Promise.all(Object.values(mongoose.models).map((model) => model.init()));
 }
@@ -25,6 +17,6 @@ export async function clearTestDB() {
 }
 
 export async function stopTestDB() {
+  await mongoose.connection.db?.dropDatabase();
   await disconnectDB();
-  await mongo?.stop();
 }

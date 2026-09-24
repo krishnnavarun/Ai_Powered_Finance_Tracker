@@ -37,7 +37,9 @@ function randomGenerator(seed) {
   };
 }
 
-describe('balance consistency', () => {
+// These are stress tests (many writes, retried on conflict), so they get more time
+// than the 5s default — they check that balances are right, not how fast.
+describe('balance consistency', { timeout: 60_000 }, () => {
   it.each([1, 2, 3])(
     'holds through 60 random creates, edits, deletes and transfers (seed %i)',
     async (seed) => {

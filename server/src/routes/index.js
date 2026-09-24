@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createAuthRouter } from './auth.routes.js';
 import categoryRoutes from './category.routes.js';
 import healthRoutes from './health.routes.js';
+import { budgetRoutes, goalRoutes, recurringRoutes } from './planning.routes.js';
 import transactionRoutes from './transaction.routes.js';
 import walletRoutes from './wallet.routes.js';
 
@@ -15,6 +16,9 @@ export function createApiRouter() {
   apiRouter.use('/wallets', walletRoutes);
   apiRouter.use('/categories', categoryRoutes);
   apiRouter.use('/transactions', transactionRoutes);
+  apiRouter.use('/budgets', budgetRoutes);
+  apiRouter.use('/goals', goalRoutes);
+  apiRouter.use('/recurring', recurringRoutes);
 
   return apiRouter;
 }

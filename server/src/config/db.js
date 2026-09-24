@@ -14,9 +14,10 @@ function attachListeners() {
   mongoose.connection.on('error', (err) => logger.error({ err }, 'MongoDB error'));
 }
 
-export async function connectDB(uri) {
+// `dbName` overrides the database in the URI (tests give each file its own database).
+export async function connectDB(uri, { dbName } = {}) {
   attachListeners();
-  await mongoose.connect(uri, { serverSelectionTimeoutMS: 10_000 });
+  await mongoose.connect(uri, { serverSelectionTimeoutMS: 10_000, ...(dbName ? { dbName } : {}) });
   // Log host and db name only — the URI contains the password.
   logger.info(
     { host: mongoose.connection.host, db: mongoose.connection.name },

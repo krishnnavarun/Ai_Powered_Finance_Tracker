@@ -21,6 +21,8 @@ export default defineConfig({
       RECEIPT_STORAGE: 'local',
       UPLOAD_DIR: path.join(os.tmpdir(), 'paisa-pal-test-uploads'),
     },
+    // Starts one shared in-memory MongoDB for all test files (see the file for why).
+    globalSetup: ['./tests/globalSetup.js'],
     // The first run downloads a MongoDB binary for mongodb-memory-server.
     hookTimeout: 180_000,
   },

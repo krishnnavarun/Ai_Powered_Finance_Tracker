@@ -1,4 +1,6 @@
+import { Budget } from '../models/Budget.js';
 import { Category } from '../models/Category.js';
+import { RecurringRule } from '../models/RecurringRule.js';
 import { Transaction } from '../models/Transaction.js';
 import { defaultCategoriesFor } from '../seed/defaultCategories.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -92,6 +94,19 @@ export async function deleteCategory(userId, categoryId) {
       409,
       'CATEGORY_IN_USE',
       'This category is used by transactions. Archive it to hide it instead.',
+    );
+  }
+  const [budget, rule] = await Promise.all([
+    Budget.exists({ userId, categoryId: category._id }),
+    RecurringRule.exists({ userId, 'template.categoryId': category._id }),
+  ]);
+  if (budget || rule) {
+    throw new ApiError(
+      409,
+      'CATEGORY_IN_USE',
+      budget
+        ? 'This category has a budget. Delete the budget first, or archive the category.'
+        : 'A recurring payment uses this category. Change that payment first, or archive the category.',
     );
   }
   await category.deleteOne();

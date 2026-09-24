@@ -78,7 +78,7 @@ function sameId(a, b) {
 // Checks a transaction as it will be saved (after merging any edits) and returns the
 // cleaned fields. `previous` is the stored version when editing: archived wallets and
 // categories it already used may stay, but new ones can't be archived.
-async function resolveTransaction(userId, draft, { session, previous } = {}) {
+export async function resolveTransaction(userId, draft, { session, previous } = {}) {
   const txn = { ...draft };
 
   if (txn.type === 'transfer') {
