@@ -53,7 +53,11 @@ npm run dev        # http://localhost:5000/api/health
 cd client
 npm install
 cp .env.example .env
+npm run dev        # http://localhost:5173
 ```
+
+Built with React 19, Vite, Tailwind CSS v4, shadcn/ui (Radix), React Router and Zustand.
+Light / dark / system theme, desktop sidebar and a mobile bottom tab bar.
 
 ### Scripts
 

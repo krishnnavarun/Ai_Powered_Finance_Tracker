@@ -17,6 +17,8 @@
 - The LLM must **never** access MongoDB directly. It only calls whitelisted tool functions (Section 7.4).
 - All AI features must degrade gracefully: if the AI API fails or AI is disabled, the app still works.
 - `client/` and `server/` are **fully independent**: each has its own `package.json`, `node_modules`, lock file, ESLint/Prettier configs, `.gitignore` and `.env.example`. Never add tooling or dependencies at the repo root. Run `npm run check` inside each folder.
+- **Adding shadcn/ui components:** `npx shadcn add` fails on this machine (npm `allow-scripts` config + registry `cn` import). Instead run `npx shadcn@latest view <name>`, take the source, convert it to `.jsx` (drop types, import `cn` from `@/lib/utils`, `radix-ui` for primitives) and save it in `client/src/components/ui/`. Never install a package named `cn`.
+- Client pages are registered in `client/src/lib/navigation.js` (sidebar, mobile nav and router all read it). Replace `PlaceholderPage` in `client/src/router.jsx` as each page is built.
 - Prefer small, readable files. Business logic lives in `services/`, not controllers.
 - Write unit tests for every analytics function and parser.
 
@@ -109,7 +111,7 @@ paisa-pal/                    (root holds only docs — no package.json, node_mo
 │       ├── main.jsx  App.jsx  router.jsx
 │       ├── api/            (axios instance with refresh interceptor, query hooks per feature)
 │       ├── components/
-│       │   ├── ui/         (shadcn)
+│       │   ├── ui/         (shadcn/ui, converted to .jsx — see note below)
 │       │   ├── charts/     (CategoryPie, TrendLine, ForecastChart, BudgetBar)
 │       │   ├── layout/     (Sidebar, Topbar, MobileNav)
 │       │   └── common/     (EmptyState, Money, DateRangePicker, ConfirmDialog)
@@ -396,7 +398,7 @@ VITE_API_URL=http://localhost:5000/api
 - [x] Monorepo `client/` + `server/`, JavaScript (ESM), ESLint, Prettier, `.gitignore`, `.env.example`
 - [x] Express app with helmet, cors, pino, error handler, `/api/health`, env validation with Zod
 - [x] Mongo + Redis connections; docker-compose for local mongo/redis (optional)
-- [ ] Vite React app with Tailwind + shadcn/ui, router, layout shell (sidebar + mobile nav), theme toggle
+- [x] Vite React app with Tailwind + shadcn/ui, router, layout shell (sidebar + mobile nav), theme toggle
 - [ ] GitHub Actions CI (lint, format check, test)
 
 ### Phase 1 — Auth
@@ -457,7 +459,7 @@ Each checkpoint is a small, working, pushable state. Claude stops after each one
 **Phase 0 — Setup**
 - [x] **CP1 Repo skeleton** — independent `client/` + `server/` apps, each with its own `package.json`, JavaScript (ESM), ESLint, Prettier, `.gitignore`, `.env.example`; README stub
 - [x] **CP2 Server foundation** — Express + helmet + cors + pino, error handler, notFound, `/api/health`, Zod env validation, Mongo + Redis connections, docker-compose, Vitest + Supertest health test
-- [ ] **CP3 Client foundation** — Vite + React (JSX), Tailwind + shadcn/ui, React Router, layout shell (sidebar + mobile nav), theme toggle
+- [x] **CP3 Client foundation** — Vite + React (JSX), Tailwind + shadcn/ui, React Router, layout shell (sidebar + mobile nav), theme toggle
 - [ ] **CP4 CI** — GitHub Actions: lint, format check, test for client + server
 
 **Phase 1 — Auth**
