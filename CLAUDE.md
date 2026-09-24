@@ -22,6 +22,8 @@
 - Edit files with the Edit/Write tools or Node — never PowerShell `Set-Content`/`Get-Content -Raw` round-trips (Windows PowerShell 5.1 corrupts UTF-8 like ₹ and — and adds a BOM).
 - API responses: success → `{ success: true, data: {...} }`; errors → the standard error shape (Section 8). Protected routes use `requireAuth` and read the user from `req.user.id`. Validate input with `validate({ body, query, params })` + Zod schemas in `server/src/validators/`.
 - Client data: call the API only through `client/src/api/*` (shared axios instance handles tokens + refresh); server state via TanStack Query; errors are `ApiError` with `code`/`message`. Pages are lazy-loaded in `router.jsx`. Client tests fake the API with MSW (`client/src/test/msw.js`).
+- Ownership: load user-owned docs with `findOwnedOrThrow(Model, userId, id)` — another user's id returns the same 404 as a missing one. Every new resource adds cases to `server/tests/api/isolation.test.js`.
+- Server API tests need a replica set for transactions: `tests/helpers/db.js` starts a one-node in-memory replica set; create a fresh `createApp()` per test (fresh rate-limit counters).
 - Prefer small, readable files. Business logic lives in `services/`, not controllers.
 - Write unit tests for every analytics function and parser.
 
@@ -167,7 +169,8 @@ All models: `timestamps: true`. All user-owned docs have indexed `userId`.
 `userId, name, type: 'cash'|'bank'|'upi'|'card'|'savings'|'other', balance (paise), openingBalance, color, icon, isArchived, creditLimit? (for card)`
 
 **Category**
-`userId (null = system default), name, type: 'income'|'expense', icon, color, parentId?, isArchived`
+`userId (required), name, type: 'income'|'expense', icon (lucide name), color (#hex), parentId? (one level only), systemKey (null for custom), sortOrder, isArchived`
+**Decision (CP7):** each user gets their own copy of the defaults on sign-up (created in the same MongoDB transaction as the user). Defaults carry a stable `systemKey` (e.g. `food_dining`) so rules still find them after a rename; they can be archived but not deleted. Names are unique per user + type, case-insensitive.
 Defaults: Food & Dining, Groceries, Transport, Fuel, Rent, Utilities, Mobile & Internet, Shopping, Entertainment, Subscriptions, Health, Education, Travel, Personal Care, Gifts, EMI/Loans, Investments, Other; Income: Salary, Freelance, Pocket Money, Refund, Interest, Other Income.
 
 **Transaction**
@@ -320,7 +323,7 @@ LLM is only used to phrase insight messages (with template fallback when AI is o
 ```
 auth         POST /auth/register · /auth/login · /auth/refresh · /auth/logout · GET /auth/me · GET /auth/google (optional)
 users        PATCH /users/me · PATCH /users/me/settings · GET /users/me/export · DELETE /users/me
-wallets      GET/POST /wallets · PATCH/DELETE /wallets/:id · POST /wallets/transfer
+wallets      GET/POST /wallets · GET/PATCH/DELETE /wallets/:id · POST /wallets/transfer
 categories   GET/POST /categories · PATCH/DELETE /categories/:id
 transactions GET /transactions (filters, cursor/page) · POST · PATCH/DELETE /:id · POST /bulk · POST /:id/receipt
 recurring    GET/POST /recurring · PATCH/DELETE /recurring/:id
@@ -470,7 +473,7 @@ Each checkpoint is a small, working, pushable state. Claude stops after each one
 - [x] **CP6 Auth frontend** — login/register pages, auth store, axios refresh interceptor, protected routes
 
 **Phase 2 — Wallets, categories, transactions**
-- [ ] **CP7 Wallets + categories backend** — models, CRUD, default category seeding on register, tests
+- [x] **CP7 Wallets + categories backend** — models, CRUD, default category seeding on register, tests
 - [ ] **CP8 Transactions backend** — transaction service with Mongo sessions, transfers, filters/pagination, bulk; balance-consistency + user-isolation tests
 - [ ] **CP9 Transactions + wallets UI** — Transactions page, filters, pagination, add/edit modal (manual), Wallets page, receipt upload (Cloudinary)
 

@@ -1,7 +1,9 @@
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 import { env } from '../config/env.js';
 import { User } from '../models/User.js';
 import { ApiError } from '../utils/ApiError.js';
+import { seedDefaultCategories } from './category.service.js';
 import {
   issueRefreshToken,
   revokeRefreshToken,
@@ -28,13 +30,17 @@ export async function register({ name, email, password }, meta) {
   const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS);
   let user;
   try {
-    user = await User.create({ name, email, passwordHash });
+    // User + default categories are saved together or not at all.
+    user = await mongoose.connection.transaction(async (session) => {
+      const [created] = await User.create([{ name, email, passwordHash }], { session });
+      await seedDefaultCategories(created._id, { session });
+      return created;
+    });
   } catch (err) {
     // Two sign-ups with the same email at the same moment: the unique index catches it.
     if (err?.code === 11000) throw emailTaken();
     throw err;
   }
-  // Default categories are seeded here from CP7.
   return startSession(user, meta);
 }
 
