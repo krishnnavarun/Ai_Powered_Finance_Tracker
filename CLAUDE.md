@@ -10,7 +10,7 @@
 - Build the project **phase by phase** (Section 12). Do not jump ahead.
 - At the end of each checkpoint (Section 12.1): run lint + tests, fix failures, tick the checkboxes in this file, then **STOP**. Do not commit or push — the user pushes to GitHub at each checkpoint and says "continue" to start the next one. Suggested commit message: `feat(cpN): <summary>`.
 - Ask before: adding a paid service, changing the stack, deleting data, or changing the database schema after Phase 3.
-- Use **JavaScript** (ES modules, `"type": "module"`) on both client and server — no TypeScript. Document function inputs/outputs with JSDoc; validate all runtime data with Zod.
+- Use **plain JavaScript only** (ES modules, `"type": "module"`, `.js` / `.jsx`) on both client and server. **No TypeScript anywhere**: no `.ts`/`.tsx` files, no `tsconfig`, no `typescript`/`tsx`/`@types/*` packages, and no JSDoc type annotations (`@param {type}`, `@typedef`). Use short plain-English comments instead. Validate all runtime data (request bodies, env, LLM output) with Zod.
 - Never hardcode secrets. Everything goes through `.env` (keep `.env.example` updated).
 - Money is always stored as **integers in paise** (₹250.50 → `25050`). Format only in the UI.
 - Every DB query must be scoped by the logged-in `userId`. No exceptions.
@@ -240,12 +240,14 @@ Indexes: `{userId, date:-1}`, `{userId, categoryId, date}`, `{userId, merchantKe
 ### 7.1 LLM adapter
 Every provider (gemini.js, openai.js, …) exports an object with the same two methods:
 ```js
-/**
- * @typedef {Object} LLMProvider
- * @property {(opts: { system: string, user: string, schema: import('zod').ZodType, image?: Buffer }) => Promise<any>} generateJSON
- *   Returns data already validated by `schema`.
- * @property {(opts: { system: string, messages: Msg[], tools: ToolDef[] }) => AsyncIterable<ChatEvent>} chatWithTools
- */
+// gemini.js (openai.js, groq.js, ollama.js look the same)
+export const geminiProvider = {
+  // { system, user, schema (Zod), image? } → data already validated by schema
+  async generateJSON({ system, user, schema, image }) { /* ... */ },
+
+  // { system, messages, tools } → async generator yielding text chunks and tool calls
+  async *chatWithTools({ system, messages, tools }) { /* ... */ },
+};
 ```
 - Provider chosen by `LLM_PROVIDER` env. Models configured by env (`LLM_MODEL_FAST`, `LLM_MODEL_SMART`).
 - `generateJSON`: request JSON output, validate with Zod, retry once with the validation error, else throw `AIParseError`.

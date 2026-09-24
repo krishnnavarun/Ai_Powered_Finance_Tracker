@@ -1,7 +1,5 @@
-/**
- * The API sends and receives money as integer paise. These helpers convert
- * at the UI boundary: form input → paise, paise → "₹1,00,000".
- */
+// The API sends and receives money as integer paise. These helpers convert
+// at the UI boundary: form input → paise, paise → "₹1,00,000".
 
 const AMOUNT_PATTERN = /^-?\d+(\.\d{1,2})?$/;
 
@@ -19,23 +17,15 @@ const inrWhole = new Intl.NumberFormat('en-IN', {
   maximumFractionDigits: 0,
 });
 
-/**
- * Formats paise with Indian digit grouping: 10000000 → "₹1,00,000".
- * @param {number} paise
- * @param {{ decimals?: 'auto' | 'always' }} [options] 'auto' hides ".00" for whole rupees.
- * @returns {string}
- */
+// Formats paise with Indian digit grouping: 10000000 → "₹1,00,000".
+// decimals: 'auto' hides ".00" for whole rupees, 'always' keeps two decimals.
 export function formatMoney(paise, { decimals = 'auto' } = {}) {
   const rupees = paise / 100;
   const showDecimals = decimals === 'always' || paise % 100 !== 0;
   return (showDecimals ? inrWithDecimals : inrWhole).format(rupees);
 }
 
-/**
- * Parses a form value like "1,250.50" into paise. Returns null if invalid.
- * @param {string} value
- * @returns {number | null}
- */
+// Parses a form value like "1,250.50" into paise. Returns null if invalid.
 export function parseRupeesToPaise(value) {
   const cleaned = value.trim().replace(/^₹/, '').replace(/[,\s]/g, '');
   if (!AMOUNT_PATTERN.test(cleaned)) return null;
