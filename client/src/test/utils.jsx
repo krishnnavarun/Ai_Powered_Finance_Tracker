@@ -3,7 +3,10 @@ import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { vi } from 'vitest';
 import { AppProviders } from '@/AppProviders';
+import { createQueryClient } from '@/lib/queryClient';
 import { routes } from '@/router';
+import { useAuthStore } from '@/store/auth';
+import { testUser } from './msw';
 
 // Fakes window.matchMedia; `prefersDark` controls the OS dark-mode answer.
 export function mockMatchMedia(prefersDark = false) {
@@ -19,10 +22,19 @@ export function mockMatchMedia(prefersDark = false) {
 }
 
 // Renders the real app routes at the given URL, without a browser.
-export function renderApp(url = '/dashboard') {
+// auth: 'signed-in'  — already logged in as testUser (default)
+//       'signed-out' — known to be logged out
+//       'restore'    — app starts up and asks the (fake) API for a session
+export function renderApp(url = '/dashboard', { auth = 'signed-in' } = {}) {
+  if (auth === 'signed-in') {
+    useAuthStore.setState({ status: 'authenticated', user: testUser, accessToken: 'test-token' });
+  } else if (auth === 'signed-out') {
+    useAuthStore.setState({ status: 'anonymous', user: null, accessToken: null });
+  }
+
   const router = createMemoryRouter(routes, { initialEntries: [url] });
   const result = render(
-    <AppProviders>
+    <AppProviders queryClient={createQueryClient()}>
       <RouterProvider router={router} />
     </AppProviders>,
   );

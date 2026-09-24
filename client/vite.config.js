@@ -9,7 +9,12 @@ export default defineConfig({
     // `@/components/...` instead of long `../../components/...` paths.
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
-  server: { port: 5173 },
+  server: {
+    port: 5173,
+    // Dev only: forward /api to the local API, so the browser sees one origin and the
+    // refresh cookie just works. Production uses VITE_API_URL instead.
+    proxy: { '/api': 'http://localhost:5000' },
+  },
   test: {
     // Threads start much faster than child processes, which avoids worker start-up
     // timeouts on a cold run right after `npm ci` (always the case in CI).

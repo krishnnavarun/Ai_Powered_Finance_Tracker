@@ -1,18 +1,8 @@
-import { useEffect } from 'react';
-import { Outlet, useMatches } from 'react-router';
+import { Outlet } from 'react-router';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { MobileNav } from './MobileNav';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
-
-// Sets the browser tab title from the current route's `handle.title`.
-function useDocumentTitle() {
-  const matches = useMatches();
-  const title = [...matches].reverse().find((match) => match.handle?.title)?.handle.title;
-
-  useEffect(() => {
-    document.title = title ? `${title} · Paisa Pal` : 'Paisa Pal';
-  }, [title]);
-}
 
 export function AppLayout() {
   useDocumentTitle();
