@@ -28,7 +28,9 @@ export function refreshSession() {
       return res.data.data;
     })
     .catch((error) => {
-      useAuthStore.getState().clearSession();
+      const { status, clearSession } = useAuthStore.getState();
+      // Losing a live session is "expired"; failing to restore one on start-up is not.
+      clearSession(status === 'authenticated' ? 'expired' : null);
       throw toApiError(error);
     })
     .finally(() => {

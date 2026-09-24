@@ -21,6 +21,7 @@
 - Client pages are registered in `client/src/lib/navigation.js` (sidebar, mobile nav and router all read it). Replace `PlaceholderPage` in `client/src/router.jsx` as each page is built.
 - Edit files with the Edit/Write tools or Node — never PowerShell `Set-Content`/`Get-Content -Raw` round-trips (Windows PowerShell 5.1 corrupts UTF-8 like ₹ and — and adds a BOM).
 - API responses: success → `{ success: true, data: {...} }`; errors → the standard error shape (Section 8). Protected routes use `requireAuth` and read the user from `req.user.id`. Validate input with `validate({ body, query, params })` + Zod schemas in `server/src/validators/`.
+- Client data: call the API only through `client/src/api/*` (shared axios instance handles tokens + refresh); server state via TanStack Query; errors are `ApiError` with `code`/`message`. Pages are lazy-loaded in `router.jsx`. Client tests fake the API with MSW (`client/src/test/msw.js`).
 - Prefer small, readable files. Business logic lives in `services/`, not controllers.
 - Write unit tests for every analytics function and parser.
 
@@ -207,7 +208,7 @@ Indexes: `{userId, date:-1}`, `{userId, categoryId, date}`, `{userId, merchantKe
 ## 6. Feature list
 
 ### 6.1 Core
-- [ ] Register / login / logout / refresh / me; Google login (optional)
+- [x] Register / login / logout / refresh / me (Google login: optional, not built yet)
 - [ ] Onboarding: currency, month start day, create first wallets, optional CSV import, enable AI
 - [ ] Wallets: CRUD, archive, balance, transfers
 - [ ] Categories: defaults + custom, icons/colors
@@ -406,7 +407,7 @@ VITE_API_URL=http://localhost:5000/api
 ### Phase 1 — Auth
 - [x] User + RefreshToken models, register/login/refresh/logout/me
 - [x] Auth middleware; login rate limit
-- [ ] Client: login/register pages, protected routes, axios refresh interceptor, auth store
+- [x] Client: login/register pages, protected routes, axios refresh interceptor, auth store
 - [x] API tests for auth
 
 ### Phase 2 — Wallets, categories, transactions
@@ -466,7 +467,7 @@ Each checkpoint is a small, working, pushable state. Claude stops after each one
 
 **Phase 1 — Auth**
 - [x] **CP5 Auth backend** — User + RefreshToken models, register/login/refresh/logout/me, auth middleware, login rate limit, API tests
-- [ ] **CP6 Auth frontend** — login/register pages, auth store, axios refresh interceptor, protected routes
+- [x] **CP6 Auth frontend** — login/register pages, auth store, axios refresh interceptor, protected routes
 
 **Phase 2 — Wallets, categories, transactions**
 - [ ] **CP7 Wallets + categories backend** — models, CRUD, default category seeding on register, tests

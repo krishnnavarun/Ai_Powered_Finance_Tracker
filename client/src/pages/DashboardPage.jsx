@@ -2,6 +2,8 @@ import { LayoutDashboard, Percent, TrendingDown, TrendingUp, Wallet } from 'luci
 import { EmptyState } from '@/components/common/EmptyState';
 import { Money } from '@/components/common/Money';
 import { PageHeader } from '@/components/common/PageHeader';
+import { firstName } from '@/lib/user';
+import { useAuthStore } from '@/store/auth';
 
 // Placeholder numbers until transactions exist (CP8); the real dashboard arrives in CP11.
 const STATS = [
@@ -12,9 +14,14 @@ const STATS = [
 ];
 
 export function DashboardPage() {
+  const name = useAuthStore((state) => firstName(state.user?.name));
+
   return (
     <>
-      <PageHeader title="Dashboard" description="Your money at a glance" />
+      <PageHeader
+        title="Dashboard"
+        description={name ? `Hi ${name}, here's your money at a glance` : 'Your money at a glance'}
+      />
 
       <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {STATS.map(({ label, icon: Icon, value }) => (

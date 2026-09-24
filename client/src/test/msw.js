@@ -26,11 +26,12 @@ export function session(accessToken = 'access-token-1', user = testUser) {
   return HttpResponse.json({ success: true, data: { user, accessToken } });
 }
 
-// Default: nobody is logged in (no refresh cookie).
+// Defaults: nobody is logged in (no refresh cookie); logout always succeeds.
 export const server = setupServer(
   http.post('*/api/auth/refresh', () =>
     apiError(401, 'INVALID_REFRESH_TOKEN', 'Please log in again'),
   ),
+  http.post('*/api/auth/logout', () => new HttpResponse(null, { status: 204 })),
 );
 
 export { http, HttpResponse };

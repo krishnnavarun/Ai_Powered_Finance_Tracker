@@ -65,8 +65,17 @@ cp .env.example .env
 npm run dev        # http://localhost:5173
 ```
 
-Built with React 19, Vite, Tailwind CSS v4, shadcn/ui (Radix), React Router and Zustand.
+Built with React 19, Vite, Tailwind CSS v4, shadcn/ui (Radix), React Router, TanStack Query, React Hook Form + Zod and Zustand.
 Light / dark / system theme, desktop sidebar and a mobile bottom tab bar.
+
+Run the API (`server/`) at the same time — in development Vite forwards `/api` to `http://localhost:5000`.
+
+## How login works
+
+- **Access token** (15 min JWT) is kept in memory only — never in `localStorage` — and sent as `Authorization: Bearer`.
+- **Refresh token** lives in an `httpOnly` cookie limited to `/api/auth`. It is rotated on every use and stored only as an HMAC hash; reusing an old one (a sign of theft) ends every session from that login.
+- When an access token expires the client refreshes it once and retries the request; parallel requests share a single refresh.
+- Passwords are hashed with bcrypt (cost 12); login is limited to 5 attempts per minute per IP.
 
 ### Scripts
 

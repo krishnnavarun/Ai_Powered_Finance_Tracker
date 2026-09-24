@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { loginSchema } from '@/features/auth/schemas';
 import { useLogin } from '@/features/auth/useAuthMutations';
+import { useAuthStore } from '@/store/auth';
 
 export function LoginPage() {
   const form = useForm({
@@ -16,6 +17,7 @@ export function LoginPage() {
     defaultValues: { email: '', password: '' },
   });
   const login = useLogin();
+  const sessionExpired = useAuthStore((state) => state.endReason === 'expired');
   const { errors } = form.formState;
 
   const onSubmit = form.handleSubmit((values) => login.mutate(values));
@@ -29,6 +31,9 @@ export function LoginPage() {
 
       <form onSubmit={onSubmit} noValidate className="grid gap-4">
         <FormAlert>{login.error?.message}</FormAlert>
+        {sessionExpired && !login.error && (
+          <FormAlert tone="info">Your session expired. Please log in again.</FormAlert>
+        )}
 
         <FormField label="Email" error={errors.email}>
           {(field) => (
