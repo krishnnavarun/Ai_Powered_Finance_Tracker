@@ -1,4 +1,5 @@
 import { Category } from '../models/Category.js';
+import { Transaction } from '../models/Transaction.js';
 import { defaultCategoriesFor } from '../seed/defaultCategories.js';
 import { ApiError } from '../utils/ApiError.js';
 import { findOwnedOrThrow, withUniqueName } from './ownership.js';
@@ -86,6 +87,12 @@ export async function deleteCategory(userId, categoryId) {
       'Move or delete its sub-categories first, or archive it instead.',
     );
   }
-  // CP8: categories used by transactions can only be archived.
+  if (await Transaction.exists({ userId, categoryId: category._id })) {
+    throw new ApiError(
+      409,
+      'CATEGORY_IN_USE',
+      'This category is used by transactions. Archive it to hide it instead.',
+    );
+  }
   await category.deleteOne();
 }

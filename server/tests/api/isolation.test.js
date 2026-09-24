@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { Category } from '../../src/models/Category.js';
+import { Transaction } from '../../src/models/Transaction.js';
 import { Wallet } from '../../src/models/Wallet.js';
 import { signUp } from '../helpers/auth.js';
 import { clearTestDB, startTestDB, stopTestDB } from '../helpers/db.js';
@@ -94,5 +95,103 @@ describe('categories are private', () => {
       .send({ name: 'Sneaky', type: 'expense', parentId: ashaCategory.id });
     expect(res.status).toBe(404);
     expect(res.body.error.message).toBe('Parent category not found');
+  });
+});
+
+describe('transactions are private', () => {
+  let ashaTxn;
+  let raviWallet;
+
+  beforeEach(async () => {
+    ashaTxn = (
+      await asha.post('/api/transactions').send({
+        type: 'expense',
+        amount: 25000,
+        walletId: ashaWallet.id,
+        categoryId: ashaCategory.id,
+        merchant: 'Asha secret shop',
+        date: '2026-09-20',
+      })
+    ).body.data.transaction;
+    raviWallet = (await ravi.post('/api/wallets').send({ name: 'Ravi Cash', type: 'cash' })).body
+      .data.wallet;
+  });
+
+  it("do not appear in another user's list, search or totals", async () => {
+    const res = await ravi.get('/api/transactions?q=secret');
+    expect(res.body.data.transactions).toEqual([]);
+    expect(res.body.data.totals).toEqual({ income: 0, expense: 0, transfer: 0 });
+
+    const byWallet = await ravi.get(`/api/transactions?walletId=${ashaWallet.id}`);
+    expect(byWallet.body.data.transactions).toEqual([]);
+  });
+
+  it.each([
+    ['read', (id) => ravi.get(`/api/transactions/${id}`)],
+    ['edited', (id) => ravi.patch(`/api/transactions/${id}`).send({ amount: 1 })],
+    ['deleted', (id) => ravi.delete(`/api/transactions/${id}`)],
+  ])("can't be %s by another user", async (_action, attempt) => {
+    const res = await attempt(ashaTxn.id);
+    expect(res.status).toBe(404);
+    expect(await Transaction.findById(ashaTxn.id)).toMatchObject({ amount: 25000 });
+  });
+
+  it('are skipped by bulk actions from another user', async () => {
+    const del = await ravi
+      .post('/api/transactions/bulk')
+      .send({ action: 'delete', ids: [ashaTxn.id] });
+    expect(del.body.data).toEqual({ deleted: 0, notFound: 1 });
+    expect(await Transaction.exists({ _id: ashaTxn.id })).toBeTruthy();
+  });
+
+  it("can't be created on another user's wallet or with their category", async () => {
+    const onHerWallet = await ravi.post('/api/transactions').send({
+      type: 'expense',
+      amount: 100,
+      walletId: ashaWallet.id,
+      date: '2026-09-20',
+    });
+    expect(onHerWallet.status).toBe(404);
+
+    const withHerCategory = await ravi.post('/api/transactions').send({
+      type: 'expense',
+      amount: 100,
+      walletId: raviWallet.id,
+      categoryId: ashaCategory.id,
+      date: '2026-09-20',
+    });
+    expect(withHerCategory.status).toBe(404);
+  });
+
+  it("can't move money into or out of another user's wallet", async () => {
+    const into = await ravi.post('/api/wallets/transfer').send({
+      fromWalletId: raviWallet.id,
+      toWalletId: ashaWallet.id,
+      amount: 100,
+      date: '2026-09-20',
+    });
+    const outOf = await ravi.post('/api/wallets/transfer').send({
+      fromWalletId: ashaWallet.id,
+      toWalletId: raviWallet.id,
+      amount: 100,
+      date: '2026-09-20',
+    });
+    expect([into.status, outOf.status]).toEqual([404, 404]);
+    expect((await Wallet.findById(ashaWallet.id)).balance).toBe(500000 - 25000);
+  });
+
+  it("can't point their own transaction at another user's wallet", async () => {
+    const own = (
+      await ravi.post('/api/transactions').send({
+        type: 'expense',
+        amount: 100,
+        walletId: raviWallet.id,
+        date: '2026-09-20',
+      })
+    ).body.data.transaction;
+
+    const res = await ravi.patch(`/api/transactions/${own.id}`).send({ walletId: ashaWallet.id });
+    expect(res.status).toBe(404);
+    expect((await Wallet.findById(ashaWallet.id)).balance).toBe(500000 - 25000);
   });
 });

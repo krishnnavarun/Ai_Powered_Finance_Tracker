@@ -32,12 +32,35 @@ const envSchema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(7),
   // bcrypt cost factor. 12 in real use; tests lower it to stay fast.
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
+
+  // Receipt photos. "local" saves them in UPLOAD_DIR (fine for development — a hosting
+  // platform's disk is wiped on restart); "cloudinary" is for the deployed app.
+  RECEIPT_STORAGE: z.enum(['local', 'cloudinary']).default('local'),
+  UPLOAD_DIR: z.string().default('uploads'),
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
 });
 
-const envSchemaWithChecks = envSchema.refine(
-  (env) => env.JWT_ACCESS_SECRET !== env.JWT_REFRESH_SECRET,
-  { path: ['JWT_REFRESH_SECRET'], message: 'must be different from JWT_ACCESS_SECRET' },
-);
+const CLOUDINARY_KEYS = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'];
+
+const envSchemaWithChecks = envSchema
+  .refine((env) => env.JWT_ACCESS_SECRET !== env.JWT_REFRESH_SECRET, {
+    path: ['JWT_REFRESH_SECRET'],
+    message: 'must be different from JWT_ACCESS_SECRET',
+  })
+  .superRefine((env, ctx) => {
+    if (env.RECEIPT_STORAGE !== 'cloudinary') return;
+    for (const key of CLOUDINARY_KEYS) {
+      if (!env[key]) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [key],
+          message: 'is required when RECEIPT_STORAGE=cloudinary',
+        });
+      }
+    }
+  });
 
 // Treat `KEY=` (empty value in .env) the same as not setting the key at all.
 function dropEmptyValues(source) {

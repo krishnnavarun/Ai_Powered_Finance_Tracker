@@ -1,3 +1,4 @@
+import { Transaction } from '../models/Transaction.js';
 import { Wallet } from '../models/Wallet.js';
 import { ApiError } from '../utils/ApiError.js';
 import { findOwnedOrThrow, withUniqueName } from './ownership.js';
@@ -68,6 +69,17 @@ export async function updateWallet(userId, walletId, changes) {
 
 export async function deleteWallet(userId, walletId) {
   const wallet = await getWallet(userId, walletId);
-  // CP8: wallets with transactions can only be archived, not deleted.
+  // Deleting would leave transactions pointing at nothing; archiving keeps history intact.
+  const used = await Transaction.exists({
+    userId,
+    $or: [{ walletId: wallet._id }, { toWalletId: wallet._id }],
+  });
+  if (used) {
+    throw new ApiError(
+      409,
+      'WALLET_IN_USE',
+      'This wallet has transactions. Archive it to hide it, or delete its transactions first.',
+    );
+  }
   await wallet.deleteOne();
 }

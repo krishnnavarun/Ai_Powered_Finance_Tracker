@@ -24,6 +24,14 @@ export function toApiError(err) {
     return new ApiError(413, 'PAYLOAD_TOO_LARGE', 'Request body is too large');
   }
 
+  // File upload problems (multer).
+  if (err?.name === 'MulterError') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return new ApiError(413, 'FILE_TOO_LARGE', 'The photo must be 5 MB or smaller');
+    }
+    return new ApiError(400, 'INVALID_UPLOAD', 'Send one photo in the "receipt" field');
+  }
+
   if (err instanceof mongoose.Error.CastError) {
     return new ApiError(400, 'INVALID_ID', `Invalid value for ${err.path}`);
   }

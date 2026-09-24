@@ -78,6 +78,26 @@ describe('loadEnv', () => {
     );
   });
 
+  it('stores receipts locally unless told otherwise', () => {
+    expect(loadEnv(minimal)).toMatchObject({ RECEIPT_STORAGE: 'local', UPLOAD_DIR: 'uploads' });
+  });
+
+  it('needs all three Cloudinary keys when Cloudinary storage is chosen', () => {
+    expect(() =>
+      loadEnv({ ...minimal, RECEIPT_STORAGE: 'cloudinary', CLOUDINARY_API_KEY: 'k' }),
+    ).toThrow(
+      /CLOUDINARY_CLOUD_NAME: is required when RECEIPT_STORAGE=cloudinary[\s\S]*CLOUDINARY_API_SECRET/,
+    );
+    const ok = loadEnv({
+      ...minimal,
+      RECEIPT_STORAGE: 'cloudinary',
+      CLOUDINARY_CLOUD_NAME: 'demo',
+      CLOUDINARY_API_KEY: 'k',
+      CLOUDINARY_API_SECRET: 's',
+    });
+    expect(ok.RECEIPT_STORAGE).toBe('cloudinary');
+  });
+
   it('rejects a bcrypt cost outside 4-15', () => {
     expect(() => loadEnv({ ...minimal, BCRYPT_ROUNDS: '20' })).toThrow(/BCRYPT_ROUNDS/);
   });

@@ -1,3 +1,5 @@
+import os from 'node:os';
+import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -15,6 +17,9 @@ export default defineConfig({
       JWT_REFRESH_SECRET: 'test-refresh-secret-0123456789abcdefghijklmno',
       // Low bcrypt cost keeps auth tests fast; real runs use 12.
       BCRYPT_ROUNDS: '4',
+      // Receipt photos go to a throwaway folder, never server/uploads.
+      RECEIPT_STORAGE: 'local',
+      UPLOAD_DIR: path.join(os.tmpdir(), 'paisa-pal-test-uploads'),
     },
     // The first run downloads a MongoDB binary for mongodb-memory-server.
     hookTimeout: 180_000,
