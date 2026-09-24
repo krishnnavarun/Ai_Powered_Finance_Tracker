@@ -5,7 +5,7 @@
   "description": "Paisa Pal API — Node.js + Express",
   "type": "module",
   "engines": {
-    "node": ">=22.9"
+    "node": ">=22.13"
   },
   "scripts": {
     "dev": "node --env-file-if-exists=.env --watch src/server.js",

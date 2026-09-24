@@ -11,6 +11,9 @@ export default defineConfig({
   },
   server: { port: 5173 },
   test: {
+    // Threads start much faster than child processes, which avoids worker start-up
+    // timeouts on a cold run right after `npm ci` (always the case in CI).
+    pool: 'threads',
     environment: 'jsdom',
     include: ['src/**/*.test.{js,jsx}'],
     setupFiles: ['./src/test/setup.js'],

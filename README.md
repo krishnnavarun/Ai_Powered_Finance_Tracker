@@ -1,5 +1,8 @@
 # Paisa Pal
 
+[![Server CI](https://github.com/krishnnavarun/paisa-pal/actions/workflows/server.yml/badge.svg)](https://github.com/krishnnavarun/paisa-pal/actions/workflows/server.yml)
+[![Client CI](https://github.com/krishnnavarun/paisa-pal/actions/workflows/client.yml/badge.svg)](https://github.com/krishnnavarun/paisa-pal/actions/workflows/client.yml)
+
 **AI-powered personal finance tracker** — AI does the logging, categorizing and forecasting; you just make decisions.
 
 Built with React (JavaScript), Node.js + Express, MongoDB and the Gemini API. India-first: INR, UPI and Indian bank SMS formats.

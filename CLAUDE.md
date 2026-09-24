@@ -19,6 +19,7 @@
 - `client/` and `server/` are **fully independent**: each has its own `package.json`, `node_modules`, lock file, ESLint/Prettier configs, `.gitignore` and `.env.example`. Never add tooling or dependencies at the repo root. Run `npm run check` inside each folder.
 - **Adding shadcn/ui components:** `npx shadcn add` fails on this machine (npm `allow-scripts` config + registry `cn` import). Instead run `npx shadcn@latest view <name>`, take the source, convert it to `.jsx` (drop types, import `cn` from `@/lib/utils`, `radix-ui` for primitives) and save it in `client/src/components/ui/`. Never install a package named `cn`.
 - Client pages are registered in `client/src/lib/navigation.js` (sidebar, mobile nav and router all read it). Replace `PlaceholderPage` in `client/src/router.jsx` as each page is built.
+- Edit files with the Edit/Write tools or Node — never PowerShell `Set-Content`/`Get-Content -Raw` round-trips (Windows PowerShell 5.1 corrupts UTF-8 like ₹ and — and adds a BOM).
 - Prefer small, readable files. Business logic lives in `services/`, not controllers.
 - Write unit tests for every analytics function and parser.
 
@@ -100,10 +101,10 @@ React (Vite) ──HTTPS/JSON + SSE──> Express API ──> MongoDB Atlas
 ## 4. Folder structure
 
 ```
-paisa-pal/                    (root holds only docs — no package.json, node_modules or .gitignore)
+paisa-pal/                    (root holds only docs + .github — no package.json, node_modules or .gitignore)
 ├── CLAUDE.md
 ├── README.md
-├── .github/workflows/ci.yml
+├── .github/workflows/     (server.yml, client.yml — the only non-doc files at root; GitHub requires this location)
 ├── client/
 │   ├── index.html
 │   ├── vite.config.js
@@ -399,7 +400,7 @@ VITE_API_URL=http://localhost:5000/api
 - [x] Express app with helmet, cors, pino, error handler, `/api/health`, env validation with Zod
 - [x] Mongo + Redis connections; docker-compose for local mongo/redis (optional)
 - [x] Vite React app with Tailwind + shadcn/ui, router, layout shell (sidebar + mobile nav), theme toggle
-- [ ] GitHub Actions CI (lint, format check, test)
+- [x] GitHub Actions CI (lint, format check, test)
 
 ### Phase 1 — Auth
 - [ ] User + RefreshToken models, register/login/refresh/logout/me
@@ -460,7 +461,7 @@ Each checkpoint is a small, working, pushable state. Claude stops after each one
 - [x] **CP1 Repo skeleton** — independent `client/` + `server/` apps, each with its own `package.json`, JavaScript (ESM), ESLint, Prettier, `.gitignore`, `.env.example`; README stub
 - [x] **CP2 Server foundation** — Express + helmet + cors + pino, error handler, notFound, `/api/health`, Zod env validation, Mongo + Redis connections, docker-compose, Vitest + Supertest health test
 - [x] **CP3 Client foundation** — Vite + React (JSX), Tailwind + shadcn/ui, React Router, layout shell (sidebar + mobile nav), theme toggle
-- [ ] **CP4 CI** — GitHub Actions: lint, format check, test for client + server
+- [x] **CP4 CI** — GitHub Actions: lint, format check, test for client + server
 
 **Phase 1 — Auth**
 - [ ] **CP5 Auth backend** — User + RefreshToken models, register/login/refresh/logout/me, auth middleware, login rate limit, API tests

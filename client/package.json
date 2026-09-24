@@ -5,7 +5,7 @@
   "description": "Paisa Pal web app — React + Vite",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13"
   },
   "scripts": {
     "dev": "vite",

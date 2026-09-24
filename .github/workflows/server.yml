@@ -1,0 +1,48 @@
+# Lint, format check and tests for the API. Runs only when server/ (or this file) changes.
+name: Server CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["server/**", ".github/workflows/server.yml"]
+  pull_request:
+    paths: ["server/**", ".github/workflows/server.yml"]
+  workflow_dispatch:
+
+# A newer push to the same branch cancels the older, still-running check.
+concurrency:
+  group: server-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint, format & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: server/.nvmrc
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # mongodb-memory-server downloads a ~100 MB MongoDB binary; keep it between runs.
+      - name: Cache MongoDB binary
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('server/package-lock.json') }}
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
