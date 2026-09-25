@@ -272,3 +272,93 @@ describe('budgets, goals and recurring payments are private', () => {
     expect(status.body.data.budgets[0].spent).toBe(0);
   });
 });
+
+describe('AI memory and parsing are private', () => {
+  it("one user's categorizer memory never files another user's payments", async () => {
+    // Asha teaches her categorizer that "Tea stall" is her "Asha Pets" category.
+    await asha.post('/api/transactions').send({
+      type: 'expense',
+      amount: 5000,
+      walletId: ashaWallet.id,
+      categoryId: ashaCategory.id,
+      merchant: 'Tea stall',
+      date: '2026-09-10',
+    });
+
+    const res = await ravi
+      .post('/api/ai/categorize')
+      .send({ items: [{ type: 'expense', merchant: 'Tea stall' }] });
+    expect(res.body.data.suggestions[0].via).not.toBe('memory');
+    expect(res.body.data.suggestions[0].categoryId).not.toBe(ashaCategory.id);
+  });
+
+  it("drafts never point at another user's wallets", async () => {
+    const res = await ravi
+      .post('/api/ai/parse/sms')
+      .send({ text: 'Rs.250.00 debited from Asha HDFC A/c XX1234 to SWIGGY on 24-09-26' });
+    expect(res.body.data.items[0].draft.walletId).toBeNull();
+  });
+});
+
+describe('statement import is private', () => {
+  it("another user's payments are never counted as duplicates", async () => {
+    await asha.post('/api/transactions').send({
+      type: 'expense',
+      amount: 64900,
+      walletId: ashaWallet.id,
+      date: '2026-09-03',
+    });
+    const res = await ravi
+      .post('/api/import/csv/preview')
+      .attach(
+        'statement',
+        Buffer.from('Date,Description,Amount\n2026-09-03,NETFLIX,-649.00\n'),
+        's.csv',
+      );
+    expect(res.body.data.rows[0].duplicate).toBe(false);
+  });
+
+  it("can't import into another user's wallet", async () => {
+    const res = await ravi.post('/api/import/csv/commit').send({
+      walletId: ashaWallet.id,
+      rows: [{ date: '2026-09-03', type: 'expense', amount: 100 }],
+    });
+    expect(res.status).toBe(404);
+    expect(await Transaction.countDocuments({ walletId: ashaWallet.id })).toBe(0);
+  });
+});
+
+describe('analytics are private', () => {
+  it("another user's subscriptions, forecast and anomalies stay hidden", async () => {
+    for (const date of ['2026-06-05', '2026-07-05', '2026-08-05', '2026-09-05']) {
+      await asha.post('/api/transactions').send({
+        type: 'expense',
+        amount: 64900,
+        walletId: ashaWallet.id,
+        merchant: 'Netflix',
+        date,
+      });
+    }
+    const mine = await asha.get('/api/ai/subscriptions');
+    expect(mine.body.data.subscriptions).toHaveLength(1);
+
+    const theirs = await ravi.get('/api/ai/subscriptions');
+    expect(theirs.body.data.subscriptions).toEqual([]);
+    const forecast = await ravi.get('/api/ai/forecast');
+    expect(forecast.body.data.balance).toBe(0);
+    const patch = await ravi
+      .patch(`/api/ai/subscriptions/${mine.body.data.subscriptions[0].id}`)
+      .send({ status: 'ignored' });
+    expect(patch.status).toBe(404);
+  });
+});
+
+describe('chats are private', () => {
+  it("another user's chat can't be read, used or deleted", async () => {
+    const session = (await asha.post('/api/chat/sessions').send({ title: 'Mine' })).body.data
+      .session;
+    expect((await ravi.get(`/api/chat/sessions/${session.id}`)).status).toBe(404);
+    expect((await ravi.delete(`/api/chat/sessions/${session.id}`)).status).toBe(404);
+    expect((await ravi.get('/api/chat/sessions')).body.data.sessions).toEqual([]);
+  });
+});

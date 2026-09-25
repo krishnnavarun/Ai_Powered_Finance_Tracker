@@ -10,6 +10,8 @@ export function createAuthRouter() {
   const limit = createAuthLimiters();
 
   router.post('/register', limit.register, validate({ body: registerSchema }), auth.register);
+  // Shares the sign-up limit: each demo is a new account.
+  router.post('/demo', limit.register, auth.demo);
   router.post('/login', limit.login, validate({ body: loginSchema }), auth.login);
   router.post('/refresh', limit.refresh, auth.refresh);
   router.post('/logout', auth.logout);

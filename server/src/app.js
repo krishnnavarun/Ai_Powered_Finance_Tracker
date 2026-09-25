@@ -36,8 +36,9 @@ const httpLogger = pinoHttp({
 export function createApp() {
   const app = express();
 
-  // Render/Railway put the API behind a proxy; needed for correct client IPs in rate limiting.
-  if (env.NODE_ENV === 'production') app.set('trust proxy', 1);
+  // In production the API sits behind proxies (Render, plus Vercel when the client
+  // forwards /api). Trusting exactly that many hops gives rate limits the real visitor IP.
+  if (env.NODE_ENV === 'production') app.set('trust proxy', env.TRUST_PROXY_HOPS);
 
   app.use(httpLogger);
   app.use(helmet());

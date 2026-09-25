@@ -29,3 +29,15 @@ export function useLogout() {
     },
   });
 }
+
+export function useDemo() {
+  const setSession = useAuthStore((state) => state.setSession);
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: authApi.startDemo,
+    onSuccess: (session) => {
+      queryClient.clear();
+      setSession(session);
+    },
+  });
+}

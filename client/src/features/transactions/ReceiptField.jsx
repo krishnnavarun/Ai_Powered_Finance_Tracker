@@ -8,7 +8,7 @@ import { transactionKeys } from './useTransactions';
 
 // Shows an image from a Blob/File. The temporary blob: URL is created and released in
 // the same effect, so it's always cleaned up (also under StrictMode's double run).
-function BlobImage({ blob, alt }) {
+export function BlobImage({ blob, alt }) {
   const imgRef = useRef(null);
   useEffect(() => {
     const objectUrl = URL.createObjectURL(blob);

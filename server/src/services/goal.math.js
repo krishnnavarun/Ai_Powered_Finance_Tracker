@@ -20,5 +20,7 @@ export function goalProgress({ targetAmount, savedAmount, deadline, status }, to
 
   if (deadline < today) return { ...result, overdue: true };
   const monthsLeft = monthsUntil(today, deadline);
-  return { ...result, monthsLeft, requiredPerMonth: Math.ceil(remaining / monthsLeft) };
+  // Rounded up to a whole rupee: "save ₹8,182 a month", not "₹8,181.82".
+  const requiredPerMonth = Math.ceil(remaining / monthsLeft / 100) * 100;
+  return { ...result, monthsLeft, requiredPerMonth };
 }

@@ -19,6 +19,10 @@
 - `client/` and `server/` are **fully independent**: each has its own `package.json`, `node_modules`, lock file, ESLint/Prettier configs, `.gitignore` and `.env.example`. Never add tooling or dependencies at the repo root. Run `npm run check` inside each folder.
 - **Adding shadcn/ui components:** `npx shadcn add` fails on this machine (npm `allow-scripts` config + registry `cn` import). Instead run `npx shadcn@latest view <name>`, take the source, convert it to `.jsx` (drop types, import `cn` from `@/lib/utils`, `radix-ui` for primitives) and save it in `client/src/components/ui/`. Never install a package named `cn`.
 - Client pages are registered in `client/src/lib/navigation.js` (sidebar, mobile nav and router all read it). Replace `PlaceholderPage` in `client/src/router.jsx` as each page is built.
+- Onboarding: `RequireAuth` sends users with `onboardingDone: false` to `/onboarding` (outside `AppLayout`). The MSW `testUser` has finished onboarding; pass `renderApp(url, { user })` to test a new user.
+- AI capture only returns drafts (`services/capture.service.js`). The client saves them through `POST /transactions` with `source` + `aiConfidence`. Categories come from `ai/categorizer.js#suggestCategories`: MerchantMap memory → keyword rules (`ai/categoryRules.js`, by `systemKey`) → AI batch of ≤50.
+- Background jobs live in `server/src/jobs/` as plain async functions (tested directly). `jobs/scheduler.js` runs them with BullMQ when `REDIS_URL` is set, else with in-process timers. Start them with `npm run worker`, or inside the API with `JOBS_IN_API=true` (Render free plan). The recurring runner claims each date by moving `nextDate` first, so two runners never double-add. Insights are fixed-text templates with a `reason` holding the numbers, deduped by `dedupeKey`.
+- Deploy: Vercel rewrites `/api/*` to the Render API (`client/vercel.json`), so the refresh cookie is first-party. Set `TRUST_PROXY_HOPS=2` on Render so rate limits see the real IP.
 - Edit files with the Edit/Write tools or Node — never PowerShell `Set-Content`/`Get-Content -Raw` round-trips (Windows PowerShell 5.1 corrupts UTF-8 like ₹ and — and adds a BOM).
 - API responses: success → `{ success: true, data: {...} }`; errors → the standard error shape (Section 8). Protected routes use `requireAuth` and read the user from `req.user.id`. Validate input with `validate({ body, query, params })` + Zod schemas in `server/src/validators/`.
 - Client data: call the API only through `client/src/api/*` (shared axios instance handles tokens + refresh); server state via TanStack Query; errors are `ApiError` with `code`/`message`. Pages are lazy-loaded in `router.jsx`. Client tests fake the API with MSW (`client/src/test/msw.js`).
@@ -34,6 +38,9 @@
   - Tests run with reduced motion on (`mockMatchMedia`), and `toast.dismiss()` runs after each test (sonner keeps a global store).
 - Receipts: always served through `GET /api/transactions/:id/receipt` (owner only, `Cache-Control: private`); storage drivers in `server/src/storage/` (`local` | `cloudinary` private images). File type is checked from the bytes, max 5 MB; photos are deleted after their transaction is deleted.
 - Budget months follow the user's `monthStartDay` (e.g. 25 → "2026-09" = 25 Sep–24 Oct) in their time zone: use `monthRange` / `monthContaining` in `server/src/utils/dates.js`. Budget and goal maths are pure functions (`budget.math.js`, `goal.math.js`) — status compares exact paise, never rounded percentages.
+- **Charts** follow the dataviz skill: pick the form first (a ranked bar list, not a pie, for "where did the money go"), one ₹ axis only, a legend for 2+ series, and a screen-reader table for every chart. Series colours are `--chart-in` (emerald) / `--chart-out` (amber), validated colour-blind safe in light and dark with the skill's `validate_palette.js` — the obvious green/red pair FAILS (deutan ΔE 6.4); run the validator again before adding any new series colour. Status (ok/warning/over) always shows an icon + label, never colour alone.
+- Bundle: Recharts and its helpers live in the `charts` chunk (`client/vite.config.js`) and load only with pages that draw charts. `includeDependenciesRecursively: false` is required, otherwise a shared helper (e.g. clsx) pulls a whole chunk into the first load. After adding a big library, check `dist/index.html` to see what loads up front.
+- Client tests: do not preload pages in the test setup (it doubled the run time); `findBy*` waits up to 10s for a lazy page instead, and `testTimeout` is 20s for whole-page tests. Budgets/goals/reports are faked by `client/src/test/fakePlanning.js`.
 - Prefer small, readable files. Business logic lives in `services/`, not controllers.
 - Write unit tests for every analytics function and parser.
 
@@ -81,7 +88,7 @@
 | Email | Resend (or Nodemailer + SMTP) |
 | PDF export | pdfkit (server) |
 | CSV | papaparse (client) / csv-parse (server) |
-| Security | helmet, cors, express-rate-limit (in-memory now; Redis store with a non-queuing connection in CP19), own `sanitize` middleware (express-mongo-sanitize does not support Express 5), zod validation |
+| Security | helmet, cors, express-rate-limit (rate-limit-redis store on its own non-queuing ioredis connection when Redis is ready, in-memory otherwise; `passOnStoreError` lets requests through if Redis drops), own `sanitize` middleware (express-mongo-sanitize does not support Express 5), zod validation |
 | Logging | pino + pino-http |
 | Testing | Vitest (unit), Supertest (API), Playwright (E2E), mongodb-memory-server |
 | Docs | Swagger / OpenAPI (swagger-ui-express) |
@@ -222,40 +229,42 @@ Indexes: `{userId, date:-1}`, `{userId, categoryId, date}`, `{userId, merchantKe
 
 ### 6.1 Core
 - [x] Register / login / logout / refresh / me (Google login: optional, not built yet)
-- [ ] Onboarding: currency, month start day, create first wallets, optional CSV import, enable AI
+- [x] Onboarding: currency, month start day, create first wallets, optional CSV import, enable AI
 - [x] Wallets: CRUD, archive, balance, transfers
-- [ ] Categories: defaults + custom, icons/colors (API done in CP7; a page to manage them comes with Settings, CP24)
+- [x] Categories: defaults + custom (add, rename, hide in Settings)
 - [x] Transactions: CRUD, filters (date range, wallet, category, type, tag, amount range, search), pagination, bulk delete/re-categorize
 - [x] Receipt image attach (local disk in dev, private Cloudinary images in production)
-- [ ] Budgets: per category + overall, monthly, progress, alerts at 80%/100%, optional rollover
-- [ ] Goals: target, deadline, contributions, required-per-month calculation
-- [ ] Recurring transactions (rent, salary, EMI)
-- [ ] Dashboard: total balance, month income/expense, savings rate, category pie, 6-month trend, recent transactions, insights feed, forecast card, health score card
-- [ ] Reports: monthly/yearly, by category/wallet/merchant, export CSV + PDF
-- [ ] Settings: profile, currency, AI toggle, digest email toggle, theme, export all data (JSON), delete account
+- [x] Budgets: per category + overall, monthly, progress, alerts at 80%/100%, optional rollover (alert notifications arrive with the worker, CP19)
+- [x] Goals: target, deadline, contributions, required-per-month calculation
+- [x] Recurring transactions (rent, salary, EMI)
+- [x] Dashboard: total balance, month income/expense, savings rate, category breakdown, 6-month trend, recent transactions (CP11) · quick add (CP15) · forecast card, health score card, tips (CP20)
+- [x] Reports: monthly/yearly, by category/wallet/merchant, export CSV + PDF
+- [x] Settings: profile, currency, AI toggle, digest email toggle, theme, export all data (JSON), delete account
 
 ### 6.2 AI features
-- [ ] **A1 Natural-language quick add** — "spent 250 on biryani with Rahul yesterday from GPay" → prefilled form → confirm
-- [ ] **A2 SMS parser** — paste one or many bank/UPI SMS → regex first, LLM fallback → review list → confirm
-- [ ] **A3 Receipt scanner** — photo → LLM vision → amount, merchant, date, items → confirm
-- [ ] **A4 CSV bank-statement import** — upload → column mapping (auto-detected by AI) → dedupe → auto-categorize → confirm
-- [ ] **A5 Smart categorizer that learns** — rules → MerchantMap → LLM; user correction updates MerchantMap
-- [ ] **A6 AI Assistant (chat)** — tool calling over user's data, streamed answers, inline charts, suggested questions
-- [ ] **A7 Cash-flow forecast** — predicted month-end balance + chart + warning
-- [ ] **A8 Anomaly alerts** — z-score per category + duplicate charge detection
-- [ ] **A9 Subscription detector** — recurring merchant detection, yearly cost, "mark as cancelled"
-- [ ] **A10 Budget autopilot** — suggested budgets from last 3 months
-- [ ] **A11 Financial health score** — 0–100 with factor breakdown and tips
-- [ ] **A12 What-if simulator** — "cut food 20%" → effect on savings and goal dates
-- [ ] **A13 Weekly AI digest** — email + in-app every Monday
-- [ ] **A14 Explainability** — every insight has a "Why?" showing the numbers used
-- [ ] **A15 Privacy layer** — PII masking before any LLM call; AI on/off switch
+- [x] **A1 Natural-language quick add** — "spent 250 on biryani with Rahul yesterday from GPay" → prefilled form → confirm
+- [x] **A2 SMS parser** — paste one or many bank/UPI SMS → regex first, LLM fallback → review list → confirm
+- [x] **A3 Receipt scanner** — photo → LLM vision → amount, merchant, date, items → confirm
+- [x] **A4 CSV bank-statement import** — upload → column mapping (auto-detected by AI) → dedupe → auto-categorize → confirm
+- [x] **A5 Smart categorizer that learns** — rules → MerchantMap → LLM; user correction updates MerchantMap
+- [x] **A6 AI Assistant (chat)** — tool calling over user's data, streamed answers, inline charts, suggested questions
+- [x] **A7 Cash-flow forecast** — predicted month-end balance + chart + warning
+- [x] **A8 Anomaly alerts** — z-score per category + duplicate charge detection
+- [x] **A9 Subscription detector** — recurring merchant detection, yearly cost, "mark as cancelled"
+- [x] **A10 Budget autopilot** — suggested budgets from last 3 months
+- [x] **A11 Financial health score** — 0–100 with factor breakdown and tips
+- [x] **A12 What-if simulator** — "cut food 20%" → effect on savings and goal dates
+- [x] **A13 Weekly AI digest** — email + in-app every Monday
+- [x] **A14 Explainability** — every insight has a "Why?" showing the numbers used
+- [x] **A15 Privacy layer** — PII masking before any LLM call; AI on/off switch
 
 ---
 
 ## 7. AI design (implementation details)
 
 ### 7.1 LLM adapter
+**As built (CP14):** each provider (`gemini.js`, `openaiCompatible.js` for OpenAI + Groq, `ollama.js`) only implements `complete({ system, user, image?, json, tier })` over plain `fetch` (no SDKs; `llm/http.js` does timeouts + retries). `adapter.js#generateJSON` is shared by all: it masks PII in `user`, describes the Zod schema to the model, validates, retries once with the problems, then throws `AIParseError`; provider failures become `AIUnavailableError` so callers fall back. No key → no provider → AI features degrade. Tests swap in `tests/helpers/fakeLLM.js#useFakeLLM`. User text always goes in prompts through `prompts/common.js#asData`. `chatWithTools` is added in CP21. Original plan:
+
 Every provider (gemini.js, openai.js, …) exports an object with the same two methods:
 ```js
 // gemini.js (openai.js, groq.js, ollama.js look the same)
@@ -331,23 +340,23 @@ LLM is only used to phrase insight messages (with template fallback when AI is o
 ## 8. API (all under `/api`, JSON, Zod-validated)
 
 ```
-auth         POST /auth/register · /auth/login · /auth/refresh · /auth/logout · GET /auth/me · GET /auth/google (optional)
-users        PATCH /users/me · PATCH /users/me/settings · GET /users/me/export · DELETE /users/me
+auth         POST /auth/register · /auth/login · /auth/refresh · /auth/logout · GET /auth/me · POST /auth/demo (✅ CP25: a fresh sandbox per click from seed/demoUser.js, emails @demo.paisa-pal.invalid, removed after 24 h by jobs/cleanup.job.js) · GET /auth/google (optional)
+users        PATCH /users/me (name, currency, monthStartDay, timezone, onboardingDone) · PATCH /users/me/settings (merged per field) (✅ CP13) · GET /users/me/export (JSON download, no secrets) · DELETE /users/me ({password}; removes every collection + receipt files) (✅ CP24)
 wallets      GET/POST /wallets · GET/PATCH/DELETE /wallets/:id · POST /wallets/transfer
 categories   GET/POST /categories · PATCH/DELETE /categories/:id
 transactions GET /transactions (from,to,type,walletId,categoryId,tag,minAmount,maxAmount,q,sort,page,limit → {transactions, totals, pagination}) · POST · GET/PATCH/DELETE /:id · POST /bulk ({action:'delete'|'categorize', ids ≤200, categoryId?}) · POST /:id/receipt
 recurring    GET/POST /recurring · PATCH/DELETE /recurring/:id   (each rule has nextDate/nextRun + upcoming: next 3 dates)
 budgets      GET /budgets?month= · POST · PATCH/DELETE /:id · GET /budgets/status?month= (→ month, fromDate, toDate, daysLeft, totalSpent, budgets[{budget, spent, effectiveLimit, remaining, percent, status: ok|warning|over, dailyAllowance, rolloverAmount}])
 goals        GET/POST /goals · PATCH/DELETE /goals/:id · POST /goals/:id/contribute ({amount: +add / −take out}) — goals include progress {percent, remaining, monthsLeft, requiredPerMonth, overdue}
-reports      GET /reports/summary · /reports/by-category · /reports/trend · /reports/merchants · GET /reports/export?format=csv|pdf
-import       POST /import/csv/preview · POST /import/csv/commit
-ai           POST /ai/parse/text · /ai/parse/sms · /ai/parse/receipt
-             POST /ai/categorize (batch)
-             GET /ai/forecast · /ai/health-score · /ai/subscriptions · /ai/budget-suggestions
+reports      GET /reports/by-category?from&to&type (✅ CP11, sub-categories rolled into parents) · /reports/trend?months (✅ CP11, per budget month) · /reports/summary · /reports/merchants · /reports/by-wallet · GET /reports/export?format=csv|pdf&from&to (✅ CP12 — CSV is UTF-8 with BOM and formula-injection-safe; PDF prints "Rs." since the built-in fonts lack ₹)
+import       POST /import/csv/preview (multipart "statement" ≤10 MB + optional "mapping" JSON {headerIndex, mapping}) → {headerIndex, mapping, headers, sample, needsMapping, dayFirst, rows[{index,line,date,description,merchant,amount,type,categoryId,confidence,via,duplicate}], skipped, usedAI} · POST /import/csv/commit ({walletId, keepBalance=true, rows ≤2000}) → {imported} (✅ CP17: one Mongo transaction in transaction.service#importTransactions; keepBalance moves openingBalance so the balance stays put)
+ai           GET /ai/status → {enabled, configured, provider} · POST /ai/parse/text ({text ≤500}) → {draft, usedAI} · /ai/parse/sms ({text ≤20000, ≤50 messages}) → {items[{index,text,status:'ready'|'skipped',reason?,draft?,possibleDuplicate?,via?}], usedAI} (✅ CP15; both work with AI off via plain parsing; 20/min/user) · /ai/parse/receipt (multipart "receipt", needs AI) · /ai/parse/receipt-text ({text} read on the device by Tesseract.js when AI is off) (✅ CP16)
+             POST /ai/categorize ({items ≤200}) → {suggestions[{categoryId, confidence, via: memory|rule|ai|null}]} (✅ CP16). Every create/edit/bulk-categorize with a merchant + category updates MerchantMap (not recurring-runner rows)
+             GET /ai/forecast · /ai/health-score · /ai/anomalies · /ai/subscriptions (+ PATCH /ai/subscriptions/:id {status: active|ignored|cancelled}) · /ai/budget-suggestions?targetSavingsRate= (✅ CP18: plain maths in ai/analytics/, data loaded by services/analytics.service.js; no AI and no AI rate limit, so they work with AI off)
              POST /ai/what-if
-insights     GET /insights · PATCH /insights/:id (seen/dismissed)
-chat         GET /chat/sessions · POST /chat/sessions · GET /chat/sessions/:id · POST /chat/sessions/:id/messages (SSE stream) · DELETE /chat/sessions/:id
-notifications GET /notifications · PATCH /notifications/:id/read
+insights     GET /insights?includeDismissed → {insights, unseen} · PATCH /insights/:id (seen/dismissed) · POST /insights/seen ({ids}) · POST /insights/refresh (same work as the nightly job, for this user) (✅ CP20)
+chat         GET /chat/sessions · POST /chat/sessions · GET /chat/sessions/:id → {session, messages} · POST /chat/sessions/:id/messages ({content ≤1000}; SSE events text|tool|chart|done|error; 30/hour/user) · DELETE /chat/sessions/:id (✅ CP21: ai/chatAgent.js + ai/tools/index.js; providers stream via chat(); tools add userId server-side, return rupees, mask text; getBalances added to the tool list)
+notifications GET /notifications → {notifications, unread} · PATCH /notifications/:id/read · POST /notifications/read-all (✅ CP23: new warn/critical insights ring the bell; jobs/digest.job.js runs Mondays 9 AM IST — in-app for everyone, email via Resend REST when RESEND_API_KEY + EMAIL_FROM are set and digestEmail is on; AI writes a one-line note from the totals, fixed text when AI is off)
 health       GET /health
 ```
 Standard error shape: `{ success: false, error: { code, message, details? } }`.
@@ -361,7 +370,7 @@ Standard error shape: `{ success: false, error: { code, message, details? } }`.
 - **Transactions** — table (desktop) / cards (mobile), filters drawer, low-confidence AI rows highlighted, inline category edit (teaches categorizer).
 - **Add Transaction modal** — tabs: Manual · Type it · Paste SMS · Scan receipt.
 - **Import** — CSV upload → mapping preview → review → commit.
-- **Wallets**, **Budgets** (with "Suggest budgets" AI button), **Goals** (with what-if slider), **Subscriptions**, **Reports**, **Insights** (with "Why?" expanders), **Assistant** (chat, suggested questions, inline charts), **Settings**.
+- **Wallets**, **Budgets** (with "Suggest budgets" AI button), **Goals** (with what-if slider), **Recurring** (`/recurring`: the user's own repeating payments since CP13; AI-detected subscriptions join this page in CP20), **Reports**, **Insights** (with "Why?" expanders), **Assistant** (chat, suggested questions, inline charts), **Settings**.
 - Global: dark/light mode, fully responsive, skeleton loaders, empty states with CTAs, toast notifications, keyboard shortcut `N` for new transaction, `/` for search, ₹ formatting with Indian digit grouping (1,00,000).
 - Accessibility: labels, focus states, color not the only signal.
 
@@ -370,11 +379,11 @@ Standard error shape: `{ success: false, error: { code, message, details? } }`.
 ## 10. Security checklist
 - [x] bcrypt (12 rounds); password rules; login rate limit (5/min/IP)
 - [x] Refresh token rotation + reuse detection; httpOnly, secure, sameSite cookies
-- [ ] helmet, strict CORS (client origin only), sanitize middleware, Zod on every body/query/param
-- [ ] Every query filtered by `userId`; tests prove user A cannot read user B's data
-- [ ] File upload: type + size limits (5 MB images, 10 MB CSV)
-- [ ] PII masking before LLM; AI toggle; no raw financial data in logs
-- [ ] Secrets only in env; `.env` gitignored
+- [x] helmet, strict CORS (client origin only), sanitize middleware, Zod on every body/query/param
+- [x] Every query filtered by `userId`; tests prove user A cannot read user B's data
+- [x] File upload: type + size limits (5 MB images, 10 MB CSV)
+- [x] PII masking before LLM; AI toggle; no raw financial data in logs (LLM logs hold token counts and how many items were masked, never text)
+- [x] Secrets only in env; `.env` gitignored (only .env.example files are tracked; npm audit: 0 vulnerabilities in both apps)
 
 ---
 
@@ -433,38 +442,38 @@ VITE_API_URL=http://localhost:5000/api
 
 ### Phase 3 — Budgets, goals, recurring, dashboard, reports
 - [x] Budgets + status aggregation; Goals + contributions; RecurringRule CRUD
-- [ ] Dashboard charts and cards; Reports page; CSV + PDF export
-- [ ] Onboarding flow
+- [x] Dashboard charts and cards; Reports page; CSV + PDF export
+- [x] Onboarding flow
 - [ ] **Deploy v1** (non-AI tracker working end to end)
 
 ### Phase 4 — AI foundation & smart capture
-- [ ] LLM adapter (Gemini first) + generateJSON with Zod + retries
-- [ ] PII masker + tests
-- [ ] A1 NL quick add, A2 SMS parser (regex + LLM), A3 receipt scanner
-- [ ] A5 categorizer + MerchantMap learning
-- [ ] A4 CSV import with mapping preview + dedupe
+- [x] LLM adapter (Gemini first) + generateJSON with Zod + retries
+- [x] PII masker + tests
+- [x] A1 NL quick add, A2 SMS parser (regex + LLM), A3 receipt scanner
+- [x] A5 categorizer + MerchantMap learning
+- [x] A4 CSV import with mapping preview + dedupe
 
 ### Phase 5 — Analytics engine & insights
-- [ ] forecast, anomaly, subscriptions, healthScore, budgetSuggest, whatIf (+ unit tests with fixtures)
-- [ ] BullMQ worker: nightly insights, recurring runner, budget alerts
-- [ ] Insights feed + "Why?" explainability; Subscriptions page; Budget autopilot button; What-if slider on Goals
+- [x] forecast, anomaly, subscriptions, healthScore, budgetSuggest, whatIf (+ unit tests with fixtures)
+- [x] BullMQ worker: nightly insights, recurring runner, budget alerts
+- [x] Insights feed + "Why?" explainability; Subscriptions (on the Recurring page); Budget autopilot button; What-if slider on Goals
 
 ### Phase 6 — AI assistant
-- [ ] Tool implementations (user-scoped aggregations) + tests
-- [ ] Chat agent loop with max 5 tool calls, SSE streaming
-- [ ] Chat UI: sessions list, streaming messages, inline Recharts, suggested questions
+- [x] Tool implementations (user-scoped aggregations) + tests
+- [x] Chat agent loop with max 5 tool calls, SSE streaming
+- [x] Chat UI: sessions list, streaming messages, inline Recharts, suggested questions
 
 ### Phase 7 — Notifications & polish
-- [ ] Weekly digest email (A13) + in-app notifications
-- [ ] Empty states, skeletons, keyboard shortcuts, mobile polish, Indian number formatting
-- [ ] Settings: AI toggle, export data, delete account
-- [ ] Landing page + demo account (seed 6 months realistic Indian data: salary/pocket money, rent, Swiggy, Uber, Netflix, Jio, groceries, one anomaly, one duplicate)
+- [x] Weekly digest email (A13) + in-app notifications
+- [x] Empty states, skeletons, keyboard shortcuts (N = new transaction, / = search), mobile polish, Indian number formatting
+- [x] Settings: AI toggle, export data, delete account
+- [x] Landing page + demo account (seed 6 months realistic Indian data: salary/pocket money, rent, Swiggy, Uber, Netflix, Jio, groceries, one anomaly, one duplicate)
 
 ### Phase 8 — Quality & launch
-- [ ] Playwright E2E: signup → add txn via NL → see dashboard update → ask assistant
-- [ ] Swagger docs; security checklist complete
+- [x] Playwright E2E: signup → add txn via NL → see dashboard update → ask assistant (client/e2e, `npm run e2e`; server/scripts/e2e-server.js = in-memory Mongo + scripted fake AI; .github/workflows/e2e.yml)
+- [x] Swagger docs (/api/docs, /api/openapi.json — generated from the Zod validators in src/docs/openapi.js); security checklist complete
 - [ ] Deploy client (Vercel), API + worker (Render/Railway)
-- [ ] README: architecture diagram, "How the AI works", screenshots, demo GIF, setup steps
+- [x] README: architecture diagram (Mermaid), "How the AI works", screenshots (docs/screenshots, `npm run screenshots` in client), setup steps — a demo GIF can be recorded after deploy
 
 ### Phase 9+ — Future ideas (see Section 13)
 
@@ -491,33 +500,33 @@ Each checkpoint is a small, working, pushable state. Claude stops after each one
 
 **Phase 3 — Budgets, goals, recurring, dashboard, reports**
 - [x] **CP10 Budgets, goals, recurring backend** — CRUD, budget status aggregation, goal contributions, tests
-- [ ] **CP11 Budgets + goals UI and dashboard** — cards, charts, budget bars, recent transactions
-- [ ] **CP12 Reports + export** — Reports page, CSV + PDF export
-- [ ] **CP13 Onboarding + Deploy v1** — onboarding flow; non-AI tracker live
+- [x] **CP11 Budgets + goals UI and dashboard** — cards, charts, budget bars, recent transactions
+- [x] **CP12 Reports + export** — Reports page, CSV + PDF export
+- [ ] **CP13 Onboarding + Deploy v1** — onboarding flow; non-AI tracker live *(built: onboarding wizard, Recurring page, `vercel.json` + README deploy guide, `TRUST_PROXY_HOPS`. Waiting on the user: Atlas, Render and Vercel accounts to go live)*
 
 **Phase 4 — AI foundation & smart capture**
-- [ ] **CP14 LLM adapter + PII masker** — Gemini provider, generateJSON + Zod + retries, masker + tests
-- [ ] **CP15 NL quick add + SMS parser** — A1 + A2 (regex + LLM fallback), fixtures + tests, UI tabs
-- [ ] **CP16 Receipt scanner + categorizer** — A3 + A5 (MerchantMap learning)
-- [ ] **CP17 CSV import** — A4 mapping preview, dedupe, commit
+- [x] **CP14 LLM adapter + PII masker** — Gemini provider, generateJSON + Zod + retries, masker + tests
+- [x] **CP15 NL quick add + SMS parser** — A1 + A2 (regex + LLM fallback), fixtures + tests, UI tabs
+- [x] **CP16 Receipt scanner + categorizer** — A3 + A5 (MerchantMap learning)
+- [x] **CP17 CSV import** — A4 mapping preview, dedupe, commit
 
 **Phase 5 — Analytics & insights**
-- [ ] **CP18 Analytics engine** — forecast, anomaly, subscriptions, healthScore, budgetSuggest, whatIf + unit tests
-- [ ] **CP19 Worker** — BullMQ: nightly insights, recurring runner, budget alerts
-- [ ] **CP20 Insights UI** — insights feed + "Why?", Subscriptions page, budget autopilot, what-if slider
+- [x] **CP18 Analytics engine** — forecast, anomaly, subscriptions, healthScore, budgetSuggest, whatIf + unit tests
+- [x] **CP19 Worker** — BullMQ: nightly insights, recurring runner, budget alerts
+- [x] **CP20 Insights UI** — insights feed + "Why?", Subscriptions page, budget autopilot, what-if slider
 
 **Phase 6 — AI assistant**
-- [ ] **CP21 Chat backend** — tool implementations + tests, agent loop (max 5 tools), SSE streaming
-- [ ] **CP22 Chat UI** — sessions, streaming messages, inline charts, suggested questions
+- [x] **CP21 Chat backend** — tool implementations + tests, agent loop (max 5 tools), SSE streaming
+- [x] **CP22 Chat UI** — sessions, streaming messages, inline charts, suggested questions
 
 **Phase 7 — Notifications & polish**
-- [ ] **CP23 Digest + notifications** — weekly email (A13), in-app notifications
-- [ ] **CP24 Polish + settings** — empty states, skeletons, shortcuts, mobile, AI toggle, export, delete account
-- [ ] **CP25 Landing + demo account** — landing page, 6-month demo seed
+- [x] **CP23 Digest + notifications** — weekly email (A13), in-app notifications
+- [x] **CP24 Polish + settings** — empty states, skeletons, shortcuts, mobile, AI toggle, export, delete account
+- [x] **CP25 Landing + demo account** — landing page, 6-month demo seed
 
 **Phase 8 — Quality & launch**
-- [ ] **CP26 E2E + docs + security** — Playwright, Swagger, security checklist
-- [ ] **CP27 Launch** — deploy client + API + worker, final README with screenshots/GIF
+- [x] **CP26 E2E + docs + security** — Playwright, Swagger, security checklist
+- [ ] **CP27 Launch** — deploy client + API + worker, final README with screenshots/GIF *(README + screenshots done; deploy waits on the user's Atlas, Render and Vercel accounts — steps in README → Deploying)*
 
 ---
 

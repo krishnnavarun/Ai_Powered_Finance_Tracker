@@ -7,14 +7,11 @@ import { useUiStore } from '@/store/ui';
 import { server } from './msw';
 import { mockMatchMedia } from './utils';
 
-// Pages are lazy-loaded in the app. Load them all up front in tests, so a test never
-// waits for a page to compile (that made tests randomly slow on a busy machine).
-// (Test files in pages/ are excluded — importing them here would re-run their tests
-// inside every other test file.)
-import.meta.glob(['../pages/*.jsx', '!../pages/*.test.jsx'], { eager: true });
-
-// A little more than the default 1s for findBy* queries, for slow CI machines.
-configure({ asyncUtilTimeout: 3000 });
+// Pages are lazy-loaded, so the first visit to a page in a test file waits for it to
+// compile. findBy* queries may wait up to 10s for that on a busy machine; they return as
+// soon as the element appears, so passing tests are not slowed down.
+// (Preloading every page in every test file instead made the whole suite twice as slow.)
+configure({ asyncUtilTimeout: 20_000 });
 
 // jsdom lacks a few browser APIs that Radix UI and our theme code use.
 globalThis.ResizeObserver ??= class {
@@ -29,6 +26,20 @@ Element.prototype.scrollIntoView ??= () => {};
 // Receipt previews use blob: URLs.
 URL.createObjectURL ??= () => 'blob:test-preview';
 URL.revokeObjectURL ??= () => {};
+// "Appear when scrolled into view" animations (landing page): everything counts as visible.
+globalThis.IntersectionObserver ??= class {
+  constructor(callback) {
+    this.callback = callback;
+  }
+  observe(target) {
+    this.callback([{ isIntersecting: true, target, intersectionRatio: 1 }], this);
+  }
+  unobserve() {}
+  disconnect() {}
+  takeRecords() {
+    return [];
+  }
+};
 
 // Any request without a matching fake handler fails the test, so nothing slips through.
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));

@@ -4,7 +4,10 @@ import { normalizeMerchant } from '../../src/utils/merchant.js';
 describe('normalizeMerchant', () => {
   it.each([
     ['Swiggy', 'swiggy'],
-    ['SWIGGY*Order 8841', 'swiggy order'],
+    ['SWIGGY*Order 8841', 'swiggy'],
+    ['UPI/ZOMATO ONLINE ORDER/REF 998877', 'zomato'],
+    ['POS 4455 DMART PURCHASE', 'dmart'],
+    ['Google Pay', 'google pay'],
     ['  Zomato   Ltd. ', 'zomato'],
     ['Reliance Retail Pvt. Ltd', 'reliance retail'],
     ['www.amazon.in', 'amazon'],

@@ -9,6 +9,9 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(5000),
   CLIENT_URL: z.url().default('http://localhost:5173'),
+  // How many proxies sit in front of the API in production, so rate limits see the
+  // real visitor IP: 1 = Render/Railway only; 2 = Vercel rewrite + Render (see README).
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
 
   MONGODB_URI: z
     .string({ error: 'MONGODB_URI is required' })
@@ -20,6 +23,12 @@ const envSchema = z.object({
     .optional(),
 
   LOG_LEVEL: z.enum(LOG_LEVELS).optional(),
+  // Run the background jobs (recurring payments, alerts, insights) inside the API
+  // instead of a separate `npm run worker` process.
+  JOBS_IN_API: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 
   // Auth. Secrets must be long random strings and different from each other.
   JWT_ACCESS_SECRET: z
@@ -40,6 +49,23 @@ const envSchema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
+
+  // AI. Every AI feature is optional: without a key for the chosen provider the app
+  // works as a normal tracker and AI buttons explain that AI is not set up.
+  LLM_PROVIDER: z.enum(['gemini', 'openai', 'groq', 'ollama']).default('gemini'),
+  GEMINI_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  GROQ_API_KEY: z.string().optional(),
+  OLLAMA_BASE_URL: z.url().default('http://localhost:11434'),
+  // Leave empty for each provider's default (see src/ai/llm/adapter.js).
+  LLM_MODEL_FAST: z.string().optional(),
+  LLM_MODEL_SMART: z.string().optional(),
+  LLM_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(15000),
+
+  // Email for the weekly digest (optional; without it the digest is in-app only).
+  // Resend has a free plan: https://resend.com
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().optional(), // e.g. "Paisa Pal <digest@yourdomain.com>"
 });
 
 const CLOUDINARY_KEYS = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'];

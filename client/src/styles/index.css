@@ -38,6 +38,10 @@
   --sidebar-accent-foreground: oklch(0.3 0.08 164);
   --sidebar-border: oklch(0.88 0.02 162 / 70%);
   --sidebar-ring: oklch(0.55 0.13 164);
+  /* Chart series — validated with the dataviz palette checker (colour-blind safe,
+     >= 3:1 on the card surface). Money in = emerald, money out = amber. */
+  --chart-in: #006d4a;
+  --chart-out: #cc6600;
   /* Aurora background lights */
   --aurora-1: oklch(0.72 0.15 163 / 45%);
   --aurora-2: oklch(0.8 0.12 190 / 35%);
@@ -75,6 +79,9 @@
   --sidebar-accent-foreground: oklch(0.9 0.05 160);
   --sidebar-border: oklch(1 0 0 / 9%);
   --sidebar-ring: oklch(0.74 0.15 162);
+  /* Dark steps of the same hues, validated against the dark card surface. */
+  --chart-in: #02a671;
+  --chart-out: #ce710c;
   --aurora-1: oklch(0.55 0.15 163 / 45%);
   --aurora-2: oklch(0.5 0.12 195 / 35%);
   --aurora-3: oklch(0.7 0.13 80 / 22%);
@@ -106,6 +113,8 @@
   --color-gold: var(--gold);
   --color-gold-foreground: var(--gold-foreground);
   --color-income: var(--income);
+  --color-chart-in: var(--chart-in);
+  --color-chart-out: var(--chart-out);
   --color-expense: var(--expense);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -158,6 +167,16 @@
   }
   50% {
     transform: translate3d(-14vw, -10vh, 0) scale(0.9);
+  }
+}
+/* A gold line sweeping down a receipt photo while it's being read. */
+@keyframes scan {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(11.5rem);
   }
 }
 @keyframes aurora-c {

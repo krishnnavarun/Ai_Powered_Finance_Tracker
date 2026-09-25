@@ -1,6 +1,7 @@
 import { m } from 'motion/react';
 import { Outlet, useLocation } from 'react-router';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { useShortcuts } from '@/hooks/useShortcuts';
 import { AuroraBackground } from './AuroraBackground';
 import { MobileNav } from './MobileNav';
 import { Sidebar } from './Sidebar';
@@ -8,6 +9,7 @@ import { Topbar } from './Topbar';
 
 export function AppLayout() {
   useDocumentTitle();
+  useShortcuts();
   const { pathname } = useLocation();
 
   return (

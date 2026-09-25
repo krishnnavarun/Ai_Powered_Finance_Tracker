@@ -1,5 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { LoaderCircle, Wallet } from 'lucide-react';
+import {
+  LoaderCircle,
+  MessageSquareText,
+  PencilLine,
+  ScanLine,
+  Sparkles,
+  Wallet,
+} from 'lucide-react';
 import { m } from 'motion/react';
 import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -21,6 +28,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
+import { ScanTab } from '@/features/capture/ScanTab';
+import { SmsTab } from '@/features/capture/SmsTab';
+import { TypeItTab } from '@/features/capture/TypeItTab';
 import { categoryOptions, useCategories } from '@/features/categories/useCategories';
 import { useWallets } from '@/features/wallets/useWallets';
 import { toLocalDate, useTimeZone } from '@/lib/dates';
@@ -42,6 +52,8 @@ const TYPES = [
   { value: 'income', label: 'Income' },
   { value: 'transfer', label: 'Transfer' },
 ];
+// Drafts read with less certainty than this ask the user to check them.
+const LOW_CONFIDENCE = 0.7;
 // Sub-categories are indented in the picker (non-breaking spaces survive in <option>).
 const SUB_INDENT = String.fromCharCode(160).repeat(4);
 const FIELDS = [
@@ -93,23 +105,28 @@ function parseTags(text) {
   ];
 }
 
-function toFormValues(txn, { defaultWalletId, timeZone }) {
+// Values for a saved transaction (edit), an AI/SMS draft, or a blank form.
+// Drafts carry their date as a local day already ("2026-09-23").
+function toFormValues(txn, { defaultWalletId, timeZone, draft }) {
+  const source = txn ?? draft;
   return {
-    type: txn?.type ?? 'expense',
-    amount: paiseToInput(txn?.amount ?? null),
-    walletId: txn?.walletId ?? defaultWalletId ?? '',
-    toWalletId: txn?.toWalletId ?? '',
-    categoryId: txn?.categoryId ?? '',
-    date: toLocalDate(txn ? txn.date : new Date(), timeZone),
-    merchant: txn?.merchant ?? '',
-    note: txn?.note ?? '',
-    tags: txn?.tags?.join(', ') ?? '',
+    type: source?.type ?? 'expense',
+    amount: paiseToInput(source?.amount ?? null),
+    walletId: source?.walletId ?? defaultWalletId ?? '',
+    toWalletId: source?.toWalletId ?? '',
+    categoryId: source?.categoryId ?? '',
+    date: txn
+      ? toLocalDate(txn.date, timeZone)
+      : (draft?.date ?? toLocalDate(new Date(), timeZone)),
+    merchant: source?.merchant ?? '',
+    note: source?.note ?? '',
+    tags: source?.tags?.join(', ') ?? '',
   };
 }
 
 // Only fields the user changed are sent when editing, so e.g. an untouched date keeps
 // its exact time instead of being reset to midnight.
-function toPayload(values, { dirtyFields, isEdit }) {
+function toPayload(values, { dirtyFields, isEdit, draft }) {
   const payload = {
     type: values.type,
     amount: parseRupeesToPaise(values.amount),
@@ -121,13 +138,15 @@ function toPayload(values, { dirtyFields, isEdit }) {
   };
   if (values.type === 'transfer') payload.toWalletId = values.toWalletId;
   else payload.categoryId = values.categoryId || null;
+  // Remember where a draft came from ('nl', 'sms'…) and how sure the reader was.
+  if (draft) Object.assign(payload, { source: draft.source, aiConfidence: draft.aiConfidence });
 
   if (!isEdit) return payload;
   const changed = Object.keys(dirtyFields);
   return Object.fromEntries(Object.entries(payload).filter(([key]) => changed.includes(key)));
 }
 
-function TransactionForm({ transaction, wallets, categories, onDone }) {
+function TransactionForm({ transaction, draft, wallets, categories, onDone }) {
   const timeZone = useTimeZone();
   const isEdit = Boolean(transaction);
   const activeWallets = wallets.filter(
@@ -135,14 +154,19 @@ function TransactionForm({ transaction, wallets, categories, onDone }) {
   );
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: toFormValues(transaction, { defaultWalletId: activeWallets[0]?.id, timeZone }),
+    defaultValues: toFormValues(transaction, {
+      defaultWalletId: activeWallets[0]?.id,
+      timeZone,
+      draft,
+    }),
   });
   const { create, update, uploadReceipt, removeReceipt } = useTransactionMutations();
   const mutation = isEdit ? update : create;
   const { errors, dirtyFields } = form.formState;
   const type = useWatch({ control: form.control, name: 'type' });
   // Receipt change: { file } = new photo, { remove: true } = delete it, null = no change.
-  const [receipt, setReceipt] = useState(null);
+  // A scanned receipt's photo comes already attached.
+  const [receipt, setReceipt] = useState(draft?.receiptFile ? { file: draft.receiptFile } : null);
   const saving =
     create.isPending || update.isPending || uploadReceipt.isPending || removeReceipt.isPending;
 
@@ -152,7 +176,7 @@ function TransactionForm({ transaction, wallets, categories, onDone }) {
   if (current?.isArchived && current.type === type) options.push({ ...current, depth: 0 });
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const payload = toPayload(values, { dirtyFields, isEdit });
+    const payload = toPayload(values, { dirtyFields, isEdit, draft });
     const hasChanges = Object.keys(payload).length > 0;
     if (isEdit && !hasChanges && !receipt) return onDone(); // nothing changed
 
@@ -189,6 +213,13 @@ function TransactionForm({ transaction, wallets, categories, onDone }) {
   return (
     <form onSubmit={onSubmit} noValidate className="grid gap-4">
       <FormAlert>{fieldError ? null : mutation.error?.message}</FormAlert>
+      {draft && (
+        <FormAlert tone="info">
+          {draft.aiConfidence !== null && draft.aiConfidence < LOW_CONFIDENCE
+            ? 'Filled in for you, but some details may be wrong. Please check them before saving.'
+            : 'Filled in for you. Check the details, then save.'}
+        </FormAlert>
+      )}
 
       <fieldset>
         <legend className="sr-only">Type</legend>
@@ -312,8 +343,87 @@ function TransactionForm({ transaction, wallets, categories, onDone }) {
   );
 }
 
-// Add a transaction (transaction = null) or edit one.
-export function TransactionFormDialog({ open, onOpenChange, transaction }) {
+const ADD_TABS = [
+  { id: 'manual', label: 'Manual', icon: PencilLine },
+  { id: 'text', label: 'Type it', icon: Sparkles },
+  { id: 'sms', label: 'Paste SMS', icon: MessageSquareText },
+  { id: 'scan', label: 'Receipt', icon: ScanLine },
+];
+
+// New transaction: fill the form by hand, describe it in words, or paste bank SMS.
+// Lives inside the dialog, so its state resets each time the dialog opens.
+function AddTransaction({ initialDraft, wallets, categories, onDone }) {
+  const [tab, setTab] = useState('manual');
+  // Each new draft gets a fresh form (fresh default values).
+  const [draft, setDraft] = useState(() => initialDraft ?? null);
+  const [draftKey, setDraftKey] = useState(0);
+
+  const applyDraft = (next) => {
+    setDraft(next);
+    setDraftKey((key) => key + 1);
+    setTab('manual');
+  };
+
+  return (
+    <div className="grid gap-4">
+      <div
+        role="tablist"
+        aria-label="How to add"
+        className="grid grid-cols-2 gap-1 rounded-xl bg-muted/80 p-1 sm:grid-cols-4"
+      >
+        {ADD_TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`add-tab-${id}`}
+            aria-selected={tab === id}
+            aria-controls={`add-panel-${id}`}
+            onClick={() => setTab(id)}
+            className={cn(
+              'relative flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-sm font-medium transition-colors duration-200',
+              tab === id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {tab === id && (
+              <m.span
+                layoutId="add-tab-highlight"
+                className="absolute inset-0 rounded-lg bg-background shadow-sm ring-1 ring-border"
+                transition={{ type: 'spring', stiffness: 500, damping: 36 }}
+              />
+            )}
+            <Icon className="relative size-3.5" aria-hidden="true" />
+            <span className="relative">{label}</span>
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel" id={`add-panel-${tab}`} aria-labelledby={`add-tab-${tab}`}>
+        {tab === 'manual' && (
+          <TransactionForm
+            key={`new-${draftKey}`}
+            draft={draft}
+            wallets={wallets}
+            categories={categories}
+            onDone={onDone}
+          />
+        )}
+        {tab === 'text' && <TypeItTab onDraft={applyDraft} />}
+        {tab === 'scan' && <ScanTab onDraft={applyDraft} />}
+        {tab === 'sms' && (
+          <SmsTab
+            wallets={wallets.filter((w) => !w.isArchived)}
+            categories={categories}
+            onDone={onDone}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Add a transaction (transaction = null) or edit one. `draft` opens the add form already
+// filled in (from the dashboard's quick add).
+export function TransactionFormDialog({ open, onOpenChange, transaction, draft }) {
   const wallets = useWallets({ includeArchived: true });
   const categories = useCategories();
   const close = () => onOpenChange(false);
@@ -321,7 +431,7 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{transaction ? 'Edit transaction' : 'Add a transaction'}</DialogTitle>
           <DialogDescription>
@@ -347,10 +457,17 @@ export function TransactionFormDialog({ open, onOpenChange, transaction }) {
               </Button>
             }
           />
-        ) : (
+        ) : transaction ? (
           <TransactionForm
-            key={transaction?.id ?? 'new'}
+            key={transaction.id}
             transaction={transaction}
+            wallets={wallets.data}
+            categories={categories.data}
+            onDone={close}
+          />
+        ) : (
+          <AddTransaction
+            initialDraft={draft}
             wallets={wallets.data}
             categories={categories.data}
             onDone={close}

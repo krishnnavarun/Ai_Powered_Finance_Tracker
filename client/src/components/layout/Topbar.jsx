@@ -1,4 +1,5 @@
 import { Logo } from './Logo';
+import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
 
@@ -9,6 +10,7 @@ export function Topbar() {
       <Logo className="md:hidden" />
       <div className="ml-auto flex items-center gap-1">
         <ThemeToggle />
+        <NotificationBell />
         <UserMenu />
       </div>
     </header>

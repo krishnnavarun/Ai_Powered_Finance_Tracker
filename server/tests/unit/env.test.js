@@ -18,6 +18,7 @@ describe('loadEnv', () => {
       ACCESS_TOKEN_TTL_MINUTES: 15,
       REFRESH_TOKEN_TTL_DAYS: 7,
       BCRYPT_ROUNDS: 12,
+      TRUST_PROXY_HOPS: 1,
     });
     expect(env.REDIS_URL).toBeUndefined();
   });

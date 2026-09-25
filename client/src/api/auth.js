@@ -20,3 +20,9 @@ export async function fetchMe() {
   const res = await api.get('/auth/me');
   return res.data.data.user;
 }
+
+// A fresh demo account full of sample data, already logged in. → { user, accessToken }
+export async function startDemo() {
+  const res = await api.post('/auth/demo');
+  return res.data.data;
+}

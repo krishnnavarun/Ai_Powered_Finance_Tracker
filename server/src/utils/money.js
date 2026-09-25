@@ -37,3 +37,31 @@ export function fromPaise(paise) {
 export function isValidPaise(value) {
   return typeof value === 'number' && Number.isSafeInteger(value);
 }
+
+const indianGrouping = new Intl.NumberFormat('en-IN', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+// For PDFs and plain text: 10000050 → "Rs. 1,00,000.50". (The PDF's built-in fonts have
+// no ₹ glyph, and "Rs." is the usual written form in Indian documents.)
+export function formatRupees(paise) {
+  const sign = paise < 0 ? '-' : '';
+  return `${sign}Rs. ${indianGrouping.format(Math.abs(paise) / 100)}`;
+}
+
+// For CSV: plain rupees with two decimals and no grouping, so spreadsheets can add them up.
+export function toRupeeString(paise) {
+  return (paise / 100).toFixed(2);
+}
+
+// For messages shown in the app: 10000050 → "₹1,00,000.50", 250000 → "₹2,500" (no ".00").
+export function formatINR(paise) {
+  const sign = paise < 0 ? '-' : '';
+  const whole = Math.abs(paise) % 100 === 0;
+  const text = new Intl.NumberFormat('en-IN', {
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(Math.abs(paise) / 100);
+  return `${sign}₹${text}`;
+}

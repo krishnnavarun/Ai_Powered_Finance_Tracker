@@ -3,12 +3,15 @@ import { connectDB, disconnectDB } from './config/db.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { connectRedis, disconnectRedis } from './config/redis.js';
+import { startScheduler } from './jobs/scheduler.js';
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 async function start() {
   await connectDB(env.MONGODB_URI);
   await connectRedis(env.REDIS_URL);
+
+  const stopJobs = env.JOBS_IN_API ? await startScheduler({ redisUrl: env.REDIS_URL }) : null;
 
   const app = createApp();
   const server = app.listen(env.PORT, () => {
@@ -23,6 +26,7 @@ async function start() {
     logger.info(`${signal} received — shutting down`);
 
     server.close(async () => {
+      await stopJobs?.().catch(() => {});
       await Promise.allSettled([disconnectDB(), disconnectRedis()]);
       logger.info('Shutdown complete');
       process.exit(0);

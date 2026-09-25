@@ -47,6 +47,7 @@ export function TransactionFilters({ filters, wallets, categories }) {
         <Input
           type="search"
           aria-label="Search transactions"
+          data-shortcut="search"
           placeholder="Search merchant or note…"
           className="pl-9"
           value={search}

@@ -30,11 +30,11 @@ describe('app layout and routing', () => {
     renderApp();
     const sidebar = await screen.findByRole('navigation', { name: 'Main' });
 
-    await user.click(within(sidebar).getByRole('link', { name: 'Budgets' }));
+    await user.click(within(sidebar).getByRole('link', { name: 'Settings' }));
 
-    expect(await heading('Budgets')).toBeInTheDocument();
-    expect(screen.getByText("We're still building Budgets. Check back soon!")).toBeInTheDocument();
-    expect(within(sidebar).getByRole('link', { name: 'Budgets' })).toHaveAttribute(
+    expect(await heading('Settings')).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Preferences' })).toBeInTheDocument();
+    expect(within(sidebar).getByRole('link', { name: 'Settings' })).toHaveAttribute(
       'aria-current',
       'page',
     );

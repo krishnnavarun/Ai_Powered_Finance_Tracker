@@ -47,3 +47,15 @@ export function paiseToInput(paise) {
   const rest = abs % 100;
   return rest ? `${sign}${rupees}.${String(rest).padStart(2, '0')}` : `${sign}${rupees}`;
 }
+
+const inrCompact = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
+
+// Short amounts for chart axes, in Indian units: ₹950, ₹45K, ₹1.2L, ₹2.5Cr.
+export function formatMoneyCompact(paise) {
+  return inrCompact.format(paise / 100);
+}

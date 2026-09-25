@@ -12,11 +12,23 @@ const NOISE_WORDS = new Set([
   'www',
   'com',
   'in',
+  // Words banks and payment apps add to statement lines. ("pay" is kept on purpose:
+  // "Google Pay" and "Google" are different things.)
+  'order',
+  'orders',
+  'payment',
+  'payments',
+  'upi',
+  'pos',
+  'txn',
+  'ref',
+  'purchase',
+  'online',
 ]);
 
 // Turns a merchant name as typed or as printed on a bank statement into a stable key,
 // so different spellings of the same shop match:
-//   "SWIGGY*Order 8841"        → "swiggy order"
+//   "SWIGGY*Order 8841"        → "swiggy"
 //   "Swiggy"                   → "swiggy"
 //   "Reliance Retail Pvt. Ltd" → "reliance retail"
 // Used by the categorizer (CP16) and subscription detection (CP18).

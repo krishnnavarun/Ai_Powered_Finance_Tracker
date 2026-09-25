@@ -1,4 +1,3 @@
-import { Navigate } from 'react-router';
 import { FullPageLoader } from '@/components/common/FullPageLoader';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AuthLayout } from '@/components/layout/AuthLayout';
@@ -12,22 +11,27 @@ function lazyPage(load, exportName) {
   return async () => ({ Component: (await load())[exportName] });
 }
 
-// Real pages replace the placeholder here as each checkpoint lands.
+// Every page in the menu (lib/navigation.js) needs its loader here.
 const PAGE_LOADERS = {
   '/dashboard': lazyPage(() => import('@/pages/DashboardPage'), 'DashboardPage'),
   '/transactions': lazyPage(() => import('@/pages/TransactionsPage'), 'TransactionsPage'),
   '/wallets': lazyPage(() => import('@/pages/WalletsPage'), 'WalletsPage'),
+  '/budgets': lazyPage(() => import('@/pages/BudgetsPage'), 'BudgetsPage'),
+  '/goals': lazyPage(() => import('@/pages/GoalsPage'), 'GoalsPage'),
+  '/recurring': lazyPage(() => import('@/pages/RecurringPage'), 'RecurringPage'),
+  '/reports': lazyPage(() => import('@/pages/ReportsPage'), 'ReportsPage'),
+  '/insights': lazyPage(() => import('@/pages/InsightsPage'), 'InsightsPage'),
+  '/assistant': lazyPage(() => import('@/pages/AssistantPage'), 'AssistantPage'),
+  '/settings': lazyPage(() => import('@/pages/SettingsPage'), 'SettingsPage'),
 };
-const placeholderPage = lazyPage(() => import('@/pages/PlaceholderPage'), 'PlaceholderPage');
 
 const pageRoutes = NAV_ITEMS.map((item) => ({
   path: item.path,
-  lazy: PAGE_LOADERS[item.path] ?? placeholderPage,
+  lazy: PAGE_LOADERS[item.path],
   handle: {
     title: item.label,
     description: item.description,
     icon: item.icon,
-    checkpoint: item.checkpoint,
   },
 }));
 
@@ -38,6 +42,12 @@ export const routes = [
     // Shown while the first page's code is downloading.
     HydrateFallback: FullPageLoader,
     children: [
+      // The home page: for visitors; logged-in users go on to their dashboard.
+      {
+        index: true,
+        lazy: lazyPage(() => import('@/pages/LandingPage'), 'LandingPage'),
+        handle: { title: 'Track your money with AI' },
+      },
       // Public pages — only for logged-out visitors.
       {
         element: <GuestOnly />,
@@ -64,11 +74,20 @@ export const routes = [
         element: <RequireAuth />,
         children: [
           {
+            path: '/onboarding',
+            lazy: lazyPage(() => import('@/pages/OnboardingPage'), 'OnboardingPage'),
+            handle: { title: 'Welcome' },
+          },
+          {
             element: <AppLayout />,
             children: [
-              // "/" becomes the public landing page in CP25; until then it opens the dashboard.
-              { index: true, element: <Navigate to="/dashboard" replace /> },
               ...pageRoutes,
+              // Reached from the Transactions page, so it isn't in the menu.
+              {
+                path: '/import',
+                lazy: lazyPage(() => import('@/pages/ImportPage'), 'ImportPage'),
+                handle: { title: 'Import statement' },
+              },
               {
                 path: '*',
                 lazy: lazyPage(() => import('@/pages/NotFoundPage'), 'NotFoundPage'),

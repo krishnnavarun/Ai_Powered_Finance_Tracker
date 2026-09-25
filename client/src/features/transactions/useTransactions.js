@@ -23,6 +23,10 @@ export function useTransactionMutations() {
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: transactionKeys.all });
     queryClient.invalidateQueries({ queryKey: walletKeys.all });
+    // Spending also moves budgets, reports and the forecast / health score.
+    queryClient.invalidateQueries({ queryKey: ['budgets'] });
+    queryClient.invalidateQueries({ queryKey: ['reports'] });
+    queryClient.invalidateQueries({ queryKey: ['analytics'] });
   };
   const refreshReceipt = (txn) => {
     queryClient.invalidateQueries({ queryKey: transactionKeys.all });

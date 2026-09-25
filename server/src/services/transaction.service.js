@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { learnCategories } from '../ai/categorizer.js';
 import { Category } from '../models/Category.js';
 import { Transaction } from '../models/Transaction.js';
 import { User } from '../models/User.js';
@@ -124,18 +125,31 @@ export async function resolveTransaction(userId, draft, { session, previous } = 
 
 // ---- Create / edit / delete (each one atomic with its balance changes) -----------
 
+// The categorizer learns from every category the user picks or confirms
+// (not from rows the recurring runner adds by itself).
+function learnFrom(userId, transactions) {
+  return learnCategories(
+    userId,
+    transactions
+      .filter((txn) => txn.source !== 'recurring')
+      .map((txn) => ({ merchantKey: txn.merchantKey, categoryId: txn.categoryId })),
+  );
+}
+
 export async function createTransaction(userId, data) {
   const timeZone = await userTimeZone(userId);
-  return mongoose.connection.transaction(async (session) => {
+  const created = await mongoose.connection.transaction(async (session) => {
     const txn = await resolveTransaction(
       userId,
       { ...data, date: toInstant(data.date, timeZone) },
       { session },
     );
-    const [created] = await Transaction.create([{ ...txn, userId }], { session });
-    await applyDeltas(userId, netDeltas(balanceEffects(created)), session);
-    return created;
+    const [doc] = await Transaction.create([{ ...txn, userId }], { session });
+    await applyDeltas(userId, netDeltas(balanceEffects(doc)), session);
+    return doc;
   });
+  await learnFrom(userId, [created]);
+  return created;
 }
 
 export async function getTransaction(userId, transactionId) {
@@ -145,7 +159,7 @@ export async function getTransaction(userId, transactionId) {
 export async function updateTransaction(userId, transactionId, changes) {
   const timeZone = changes.date ? await userTimeZone(userId) : null;
 
-  return mongoose.connection.transaction(async (session) => {
+  const updated = await mongoose.connection.transaction(async (session) => {
     const existing = await findOwnedOrThrow(Transaction, userId, transactionId, {
       label: 'Transaction',
       session,
@@ -164,9 +178,11 @@ export async function updateTransaction(userId, transactionId, changes) {
     await existing.save({ session });
     // Undo what the old version did, apply what the new version does.
     await applyDeltas(userId, netDeltas(balanceEffects(txn), balanceEffects(previous)), session);
-    // CP16: a changed category also teaches the categorizer (MerchantMap).
     return existing;
   });
+  // A corrected category (or a renamed merchant) teaches the categorizer.
+  if ('categoryId' in changes || 'merchant' in changes) await learnFrom(userId, [updated]);
+  return updated;
 }
 
 export async function deleteTransaction(userId, transactionId) {
@@ -194,11 +210,125 @@ export async function transfer(userId, { fromWalletId, toWalletId, amount, date,
   });
 }
 
+// ---- Import (bank statement) ---------------------------------------------------------
+
+// Adds many income/expense rows to one wallet in a single database transaction.
+// keepBalance: the wallet's balance already includes these payments (the usual case:
+// the statement is history), so its opening balance moves the other way and the
+// balance stays the same. Otherwise the balance changes by the rows' total.
+export async function importTransactions(userId, { walletId, rows, keepBalance }) {
+  const timeZone = await userTimeZone(userId);
+  const docs = await mongoose.connection.transaction(async (session) => {
+    const wallet = await findOwnedOrThrow(Wallet, userId, walletId, { label: 'Wallet', session });
+    if (wallet.isArchived) {
+      throw new ApiError(400, 'WALLET_ARCHIVED', `"${wallet.name}" is archived.`);
+    }
+
+    const categoryIds = [...new Set(rows.map((row) => row.categoryId).filter(Boolean))];
+    const categories = await Category.find({ userId, _id: { $in: categoryIds } })
+      .session(session)
+      .lean();
+    const byId = new Map(categories.map((c) => [String(c._id), c]));
+    rows.forEach((row, i) => {
+      if (!row.categoryId) return;
+      const category = byId.get(String(row.categoryId));
+      if (!category) throw invalid(`rows.${i}.categoryId`, 'Category not found');
+      if (category.type !== row.type || category.isArchived) {
+        throw invalid(`rows.${i}.categoryId`, `"${category.name}" can’t be used for this row`);
+      }
+    });
+
+    const created = await Transaction.insertMany(
+      rows.map((row) => ({
+        userId,
+        walletId: wallet._id,
+        type: row.type,
+        amount: row.amount,
+        categoryId: row.categoryId ?? null,
+        merchant: row.merchant ?? '',
+        merchantKey: normalizeMerchant(row.merchant),
+        note: row.note ?? '',
+        date: toInstant(row.date, timeZone),
+        source: 'csv',
+        aiConfidence: row.aiConfidence ?? null,
+      })),
+      { session },
+    );
+
+    const net = netDeltas(created.flatMap(balanceEffects));
+    if (keepBalance) {
+      const [, delta = 0] = net[0] ?? [];
+      await Wallet.updateOne(
+        { _id: wallet._id, userId },
+        { $inc: { openingBalance: -delta } },
+        { session },
+      );
+    } else {
+      await applyDeltas(userId, net, session);
+    }
+    return created;
+  });
+  await learnFrom(userId, docs);
+  return { imported: docs.length };
+}
+
+// Adds many ready-made transactions (the demo account) in one database transaction,
+// with their balance changes. Every wallet and category must be the user's own.
+export async function insertTransactions(userId, rows) {
+  const timeZone = await userTimeZone(userId);
+  return mongoose.connection.transaction(async (session) => {
+    const walletIds = [
+      ...new Set(
+        rows
+          .flatMap((r) => [r.walletId, r.toWalletId])
+          .filter(Boolean)
+          .map(String),
+      ),
+    ];
+    const categoryIds = [
+      ...new Set(
+        rows
+          .map((r) => r.categoryId)
+          .filter(Boolean)
+          .map(String),
+      ),
+    ];
+    // One after the other: a transaction's session can't run two queries at once.
+    const wallets = await Wallet.countDocuments({ userId, _id: { $in: walletIds } }).session(
+      session,
+    );
+    const categories = await Category.countDocuments({
+      userId,
+      _id: { $in: categoryIds },
+    }).session(session);
+    if (wallets !== walletIds.length || categories !== categoryIds.length) {
+      throw ApiError.notFound('Wallet or category not found');
+    }
+    const created = await Transaction.insertMany(
+      rows.map((row) => ({
+        tags: [],
+        note: '',
+        merchant: '',
+        categoryId: null,
+        toWalletId: null,
+        ...row,
+        userId,
+        merchantKey: normalizeMerchant(row.merchant),
+        date: toInstant(row.date, timeZone),
+      })),
+      { session },
+    );
+    await applyDeltas(userId, netDeltas(created.flatMap(balanceEffects)), session);
+    return created.length;
+  });
+}
+
 // ---- Bulk actions ------------------------------------------------------------------
 
 // Ids that don't exist or belong to someone else are simply counted as not found.
 export async function bulkAction(userId, { action, ids, categoryId }) {
   let receiptKeys = [];
+  let learned = [];
   const result = await mongoose.connection.transaction(async (session) => {
     const transactions = await Transaction.find({ userId, _id: { $in: ids } }).session(session);
     const notFound = ids.length - transactions.length;
@@ -225,9 +355,11 @@ export async function bulkAction(userId, { action, ids, categoryId }) {
       { $set: { categoryId: category._id } },
       { session },
     );
+    learned = matching.map((txn) => ({ merchantKey: txn.merchantKey, categoryId: category._id }));
     return { updated: matching.length, skipped: transactions.length - matching.length, notFound };
   });
   await removeReceiptFiles(receiptKeys);
+  await learnCategories(userId, learned);
   return result;
 }
 

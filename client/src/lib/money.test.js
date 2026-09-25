@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatMoney, paiseToInput, parseRupeesToPaise } from './money';
+import { formatMoney, formatMoneyCompact, paiseToInput, parseRupeesToPaise } from './money';
 
 describe('paiseToInput', () => {
   it.each([
@@ -55,5 +55,16 @@ describe('parseRupeesToPaise', () => {
 
   it.each(['', 'abc', '1.234', '12.', '1e3'])('returns null for %j', (input) => {
     expect(parseRupeesToPaise(input)).toBeNull();
+  });
+});
+
+describe('formatMoneyCompact', () => {
+  it.each([
+    [95000, '₹950'],
+    [4500000, '₹45K'],
+    [12000000, '₹1.2L'],
+    [2500000000, '₹2.5Cr'],
+  ])('%i paise → %s', (paise, expected) => {
+    expect(formatMoneyCompact(paise)).toBe(expected);
   });
 });

@@ -34,9 +34,10 @@ export async function findToast(text) {
 // auth: 'signed-in'  — already logged in as testUser (default)
 //       'signed-out' — known to be logged out
 //       'restore'    — app starts up and asks the (fake) API for a session
-export function renderApp(url = '/dashboard', { auth = 'signed-in' } = {}) {
+// user: who is signed in (default testUser, who has finished onboarding)
+export function renderApp(url = '/dashboard', { auth = 'signed-in', user = testUser } = {}) {
   if (auth === 'signed-in') {
-    useAuthStore.setState({ status: 'authenticated', user: testUser, accessToken: 'test-token' });
+    useAuthStore.setState({ status: 'authenticated', user, accessToken: 'test-token' });
   } else if (auth === 'signed-out') {
     useAuthStore.setState({ status: 'anonymous', user: null, accessToken: null });
   }

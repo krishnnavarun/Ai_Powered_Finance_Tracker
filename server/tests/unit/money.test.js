@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { fromPaise, isValidPaise, toPaise } from '../../src/utils/money.js';
+import {
+  formatINR,
+  formatRupees,
+  fromPaise,
+  isValidPaise,
+  toPaise,
+  toRupeeString,
+} from '../../src/utils/money.js';
 
 describe('toPaise', () => {
   it.each([
@@ -53,4 +60,25 @@ describe('isValidPaise', () => {
     expect(isValidPaise('100')).toBe(false);
     expect(isValidPaise(Number.MAX_SAFE_INTEGER + 1)).toBe(false);
   });
+});
+
+describe('formatRupees / toRupeeString', () => {
+  it('formats with Indian grouping for documents', () => {
+    expect(formatRupees(10000050)).toBe('Rs. 1,00,000.50');
+    expect(formatRupees(-25000)).toBe('-Rs. 250.00');
+  });
+
+  it('gives spreadsheet-friendly numbers for CSV', () => {
+    expect(toRupeeString(25050)).toBe('250.50');
+    expect(toRupeeString(-100)).toBe('-1.00');
+  });
+});
+
+describe('formatINR', () => {
+  it.each([
+    [10000050, '₹1,00,000.50'],
+    [250000, '₹2,500'],
+    [99, '₹0.99'],
+    [-64900, '-₹649'],
+  ])('%i → %s', (paise, expected) => expect(formatINR(paise)).toBe(expected));
 });

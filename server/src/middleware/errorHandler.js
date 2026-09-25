@@ -26,10 +26,21 @@ export function toApiError(err) {
 
   // File upload problems (multer).
   if (err?.name === 'MulterError') {
+    const statement = err.field === 'statement';
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return new ApiError(413, 'FILE_TOO_LARGE', 'The photo must be 5 MB or smaller');
+      return new ApiError(
+        413,
+        'FILE_TOO_LARGE',
+        statement ? 'The file must be 10 MB or smaller' : 'The photo must be 5 MB or smaller',
+      );
     }
-    return new ApiError(400, 'INVALID_UPLOAD', 'Send one photo in the "receipt" field');
+    return new ApiError(
+      400,
+      'INVALID_UPLOAD',
+      statement
+        ? 'Send one CSV file in the "statement" field'
+        : 'Send one photo in the "receipt" field',
+    );
   }
 
   if (err instanceof mongoose.Error.CastError) {

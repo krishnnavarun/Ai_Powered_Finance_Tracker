@@ -32,3 +32,27 @@ export function formatDate(instant, timeZone = DEFAULT_TIME_ZONE) {
 export function startOfMonth(localDate) {
   return `${localDate.slice(0, 8)}01`;
 }
+
+// "2026-09" → "Sep" (short) or "September 2026" (long), for chart labels and headings.
+export function formatMonth(month, { long = false } = {}) {
+  const [year, m] = month.split('-').map(Number);
+  return new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'UTC',
+    month: long ? 'long' : 'short',
+    ...(long ? { year: 'numeric' } : {}),
+  }).format(new Date(Date.UTC(year, m - 1, 1)));
+}
+
+// "2026-09" → "2026-10" (or -1 → "2026-08")
+export function shiftMonth(month, by) {
+  const [year, m] = month.split('-').map(Number);
+  const date = new Date(Date.UTC(year, m - 1 + by, 1));
+  return date.toISOString().slice(0, 7);
+}
+
+// "1" → "1st", "22" → "22nd"
+export function ordinal(day) {
+  const tens = day % 100;
+  if (tens >= 11 && tens <= 13) return `${day}th`;
+  return `${day}${{ 1: 'st', 2: 'nd', 3: 'rd' }[day % 10] ?? 'th'}`;
+}

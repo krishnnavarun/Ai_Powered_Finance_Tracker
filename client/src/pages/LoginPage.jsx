@@ -8,7 +8,7 @@ import { PasswordInput } from '@/components/common/PasswordInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { loginSchema } from '@/features/auth/schemas';
-import { useLogin } from '@/features/auth/useAuthMutations';
+import { useDemo, useLogin } from '@/features/auth/useAuthMutations';
 import { useAuthStore } from '@/store/auth';
 
 export function LoginPage() {
@@ -17,6 +17,7 @@ export function LoginPage() {
     defaultValues: { email: '', password: '' },
   });
   const login = useLogin();
+  const demo = useDemo();
   const sessionExpired = useAuthStore((state) => state.endReason === 'expired');
   const { errors } = form.formState;
 
@@ -73,6 +74,18 @@ export function LoginPage() {
           Create an account
         </Link>
       </p>
+      <p className="mt-2 text-center text-sm text-muted-foreground">
+        Just looking?{' '}
+        <button
+          type="button"
+          onClick={() => demo.mutate()}
+          disabled={demo.isPending}
+          className="font-medium text-primary underline-offset-4 hover:underline disabled:opacity-60"
+        >
+          {demo.isPending ? 'Setting up…' : 'Try the demo'}
+        </button>
+      </p>
+      {demo.isError && <FormAlert>{demo.error.message}</FormAlert>}
     </>
   );
 }

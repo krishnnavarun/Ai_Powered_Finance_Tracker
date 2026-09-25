@@ -94,13 +94,13 @@ describe('goals', () => {
     });
   });
 
-  it('rounds the monthly amount up so the goal is always reached', () => {
+  it('rounds the monthly amount up to a whole rupee, so the goal is always reached', () => {
     const { requiredPerMonth } = goalProgress(
       { targetAmount: 1000000, savedAmount: 0, status: 'active', deadline: '2026-11-30' },
       '2026-09-01',
     );
     expect(requiredPerMonth * 3).toBeGreaterThanOrEqual(1000000);
-    expect(requiredPerMonth).toBe(333334);
+    expect(requiredPerMonth).toBe(333400); // ₹3,334
   });
 
   it('flags a missed deadline', () => {

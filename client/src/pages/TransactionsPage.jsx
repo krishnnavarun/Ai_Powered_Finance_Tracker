@@ -1,5 +1,6 @@
-import { ChevronLeft, ChevronRight, Plus, ReceiptText, SearchX } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronLeft, ChevronRight, FileUp, Plus, ReceiptText, SearchX } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -15,6 +16,7 @@ import { TransactionList } from '@/features/transactions/TransactionList';
 import { useTransactionFilters } from '@/features/transactions/useTransactionFilters';
 import { useTransactionMutations, useTransactions } from '@/features/transactions/useTransactions';
 import { useWalletLookup, useWallets } from '@/features/wallets/useWallets';
+import { NEW_TRANSACTION_EVENT } from '@/hooks/useShortcuts';
 import { useTimeZone } from '@/lib/dates';
 
 export function TransactionsPage() {
@@ -28,7 +30,19 @@ export function TransactionsPage() {
   const { remove, update, bulk } = useTransactionMutations();
 
   // `editing` is a transaction, 'new', or null (closed).
-  const [editing, setEditing] = useState(null);
+  const location = useLocation();
+  // Opened with the N key from another page: start with the add dialog open.
+  const [editing, setEditing] = useState(() => (location.state?.newTransaction ? 'new' : null));
+  // N pressed on this page.
+  useEffect(() => {
+    const open = () => setEditing('new');
+    window.addEventListener(NEW_TRANSACTION_EVENT, open);
+    return () => window.removeEventListener(NEW_TRANSACTION_EVENT, open);
+  }, []);
+  // "/" pressed on another page: put the cursor in the search box.
+  useEffect(() => {
+    if (location.state?.focusSearch) document.querySelector('[data-shortcut="search"]')?.focus();
+  }, [location.state]);
   const [deleting, setDeleting] = useState(null);
 
   // Ticked rows (ids). Kept while paging, so rows from several pages can be picked.
@@ -104,10 +118,18 @@ export function TransactionsPage() {
         title="Transactions"
         description="Money in and money out"
         actions={
-          <Button onClick={() => setEditing('new')}>
-            <Plus aria-hidden="true" />
-            Add transaction
-          </Button>
+          <>
+            <Button variant="outline" asChild>
+              <Link to="/import">
+                <FileUp aria-hidden="true" />
+                Import statement
+              </Link>
+            </Button>
+            <Button onClick={() => setEditing('new')} title="Shortcut: N">
+              <Plus aria-hidden="true" />
+              Add transaction
+            </Button>
+          </>
         }
       />
 

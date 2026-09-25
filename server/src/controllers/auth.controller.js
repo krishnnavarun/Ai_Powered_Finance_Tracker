@@ -1,3 +1,4 @@
+import { createDemoAccount } from '../seed/demoUser.js';
 import * as authService from '../services/auth.service.js';
 import { clearRefreshCookie, readRefreshCookie, setRefreshCookie } from '../utils/cookies.js';
 
@@ -13,6 +14,11 @@ function sendSession(res, status, { user, accessToken, refreshToken }) {
 
 export async function register(req, res) {
   sendSession(res, 201, await authService.register(req.body, requestMeta(req)));
+}
+
+// A fresh demo account full of sample data, already logged in.
+export async function demo(req, res) {
+  sendSession(res, 201, await createDemoAccount(requestMeta(req)));
 }
 
 export async function login(req, res) {

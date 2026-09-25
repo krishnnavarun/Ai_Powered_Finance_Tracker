@@ -25,5 +25,8 @@ export default defineConfig({
     globalSetup: ['./tests/globalSetup.js'],
     // The first run downloads a MongoDB binary for mongodb-memory-server.
     hookTimeout: 180_000,
+    // API tests make many database round-trips; on a busy machine one can pass the
+    // default 5 s. The tests check behaviour, not speed.
+    testTimeout: 30_000,
   },
 });

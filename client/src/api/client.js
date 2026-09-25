@@ -14,7 +14,13 @@ export const api = axios.create({
 });
 
 // These calls must never trigger a token refresh (it would loop or make no sense).
-const NO_REFRESH_URLS = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'];
+const NO_REFRESH_URLS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/refresh',
+  '/auth/logout',
+  '/auth/demo',
+];
 
 let refreshInFlight = null;
 
